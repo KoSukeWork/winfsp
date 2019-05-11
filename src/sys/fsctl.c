@@ -93,6 +93,12 @@ static NTSTATUS FspFsctlFileSystemControl(
             if (0 != IrpSp->FileObject->FsContext2)
                 Result = FspVolumeStop(FsctlDeviceObject, Irp, IrpSp);
             break;
+#if defined(WINFSP_SYS_FUSE)
+        case FSP_FSCTL_TRANSACT_FUSE:
+            if (0 != IrpSp->FileObject->FsContext2)
+                Result = FspVolumeTransactFuse(FsctlDeviceObject, Irp, IrpSp);
+            break;
+#endif
         }
         break;
     case IRP_MN_MOUNT_VOLUME:

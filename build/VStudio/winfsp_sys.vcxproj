@@ -169,6 +169,7 @@
     <ClCompile Include="..\..\src\sys\fileinfo.c" />
     <ClCompile Include="..\..\src\sys\flush.c" />
     <ClCompile Include="..\..\src\sys\fsctl.c" />
+    <ClCompile Include="..\..\src\sys\fuse\fuse.c" />
     <ClCompile Include="..\..\src\sys\iop.c" />
     <ClCompile Include="..\..\src\sys\ioq.c" />
     <ClCompile Include="..\..\src\sys\lockctl.c" />
@@ -189,6 +190,8 @@
   <ItemGroup>
     <ClInclude Include="..\..\inc\winfsp\fsctl.h" />
     <ClInclude Include="..\..\src\sys\driver.h" />
+    <ClInclude Include="..\..\src\sys\fuse\fuse.h" />
+    <ClInclude Include="..\..\src\sys\fuse\proto.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="..\..\src\sys\version.rc">

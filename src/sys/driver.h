@@ -22,6 +22,13 @@
 #ifndef WINFSP_SYS_DRIVER_H_INCLUDED
 #define WINFSP_SYS_DRIVER_H_INCLUDED
 
+/*
+ * WINFSP_SYS_FUSE
+ *
+ * Define this macro to include FUSE protocol support in the WinFsp FSD.
+ */
+#define WINFSP_SYS_FUSE
+
 #define WINFSP_SYS_INTERNAL
 
 #define POOL_NX_OPTIN                   1
@@ -1233,6 +1240,10 @@ NTSTATUS FspVolumeStop(
     PDEVICE_OBJECT FsctlDeviceObject, PIRP Irp, PIO_STACK_LOCATION IrpSp);
 NTSTATUS FspVolumeWork(
     PDEVICE_OBJECT FsvolDeviceObject, PIRP Irp, PIO_STACK_LOCATION IrpSp);
+#if defined(WINFSP_SYS_FUSE)
+NTSTATUS FspVolumeTransactFuse(
+    PDEVICE_OBJECT FsctlDeviceObject, PIRP Irp, PIO_STACK_LOCATION IrpSp);
+#endif
 
 /* file objects */
 #define FspFileNodeKind(FileNode)       \

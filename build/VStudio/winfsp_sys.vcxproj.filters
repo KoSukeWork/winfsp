@@ -12,6 +12,9 @@
     <Filter Include="Include\winfsp">
       <UniqueIdentifier>{904f0df1-2fb8-4f84-aa46-fa929488c39a}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source\fuse">
+      <UniqueIdentifier>{9688b8bb-f0ef-4270-9ffc-feb09e337ecb}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\sys\driver.c">
@@ -104,6 +107,9 @@
     <ClCompile Include="..\..\src\sys\mup.c">
       <Filter>Source</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\sys\fuse\fuse.c">
+      <Filter>Source\fuse</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\sys\driver.h">
@@ -111,6 +117,12 @@
     </ClInclude>
     <ClInclude Include="..\..\inc\winfsp\fsctl.h">
       <Filter>Include\winfsp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\sys\fuse\fuse.h">
+      <Filter>Source\fuse</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\sys\fuse\proto.h">
+      <Filter>Source\fuse</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
