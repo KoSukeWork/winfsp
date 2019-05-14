@@ -521,6 +521,8 @@ typedef struct
         } copy_file_range;
     } req;
 } FSP_FUSE_PROTO_REQ;
+#define FSP_FUSE_PROTO_REQ_HEADER_SIZE  ((ULONG)FIELD_OFFSET(FSP_FUSE_PROTO_REQ, req))
+#define FSP_FUSE_PROTO_REQ_SIZEMIN      8192 // FUSE_MIN_READ_BUFFER
 
 typedef struct
 {
@@ -705,5 +707,6 @@ typedef struct
         } notify_delete;
     } rsp;
 } FSP_FUSE_PROTO_RSP;
+#define FSP_FUSE_PROTO_RSP_HEADER_SIZE  ((ULONG)FIELD_OFFSET(FSP_FUSE_PROTO_RSP, rsp))
 
 #endif
