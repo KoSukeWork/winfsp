@@ -33,6 +33,8 @@ NTSTATUS FspSendQuerySecurityIrp(PDEVICE_OBJECT DeviceObject, PFILE_OBJECT FileO
 NTSTATUS FspSendQueryEaIrp(PDEVICE_OBJECT DeviceObject, PFILE_OBJECT FileObject,
     PFILE_GET_EA_INFORMATION GetEa, ULONG GetEaLength,
     PFILE_FULL_EA_INFORMATION Ea, PULONG PEaLength);
+NTSTATUS FspSendTransactInternalIrp(PDEVICE_OBJECT DeviceObject, PFILE_OBJECT FileObject,
+    FSP_FSCTL_TRANSACT_RSP *Response, FSP_FSCTL_TRANSACT_REQ **PRequest);
 static NTSTATUS FspSendIrpCompletion(
     PDEVICE_OBJECT DeviceObject, PIRP Irp, PVOID Context0);
 NTSTATUS FspBufferUserBuffer(PIRP Irp, ULONG Length, LOCK_OPERATION Operation);
@@ -133,6 +135,7 @@ NTSTATUS FspIrpHookNext(PDEVICE_OBJECT DeviceObject, PIRP Irp, PVOID Context);
 #pragma alloc_text(PAGE, FspSendSetInformationIrp)
 #pragma alloc_text(PAGE, FspSendQuerySecurityIrp)
 #pragma alloc_text(PAGE, FspSendQueryEaIrp)
+#pragma alloc_text(PAGE, FspSendTransactInternalIrp)
 #pragma alloc_text(PAGE, FspBufferUserBuffer)
 #pragma alloc_text(PAGE, FspLockUserBuffer)
 #pragma alloc_text(PAGE, FspMapLockedPagesInUserMode)
@@ -409,15 +412,56 @@ NTSTATUS FspSendQueryEaIrp(PDEVICE_OBJECT DeviceObject, PFILE_OBJECT FileObject,
     return Context.IoStatus.Status;
 }
 
+NTSTATUS FspSendTransactInternalIrp(PDEVICE_OBJECT DeviceObject, PFILE_OBJECT FileObject,
+    FSP_FSCTL_TRANSACT_RSP *Response, FSP_FSCTL_TRANSACT_REQ **PRequest)
+{
+    PAGED_CODE();
+
+    NTSTATUS Result;
+    PIRP Irp;
+    PIO_STACK_LOCATION IrpSp;
+
+    if (0 != PRequest)
+        *PRequest = 0;
+
+    if (0 == DeviceObject)
+        DeviceObject = IoGetRelatedDeviceObject(FileObject);
+
+    Irp = IoAllocateIrp(DeviceObject->StackSize, FALSE);
+    if (0 == Irp)
+        return STATUS_INSUFFICIENT_RESOURCES;
+
+    IrpSp = IoGetNextIrpStackLocation(Irp);
+    Irp->RequestorMode = KernelMode;
+    Irp->UserBuffer = PRequest;
+    IrpSp->MajorFunction = IRP_MJ_FILE_SYSTEM_CONTROL;
+    IrpSp->MinorFunction = IRP_MN_USER_FS_REQUEST;
+    IrpSp->FileObject = FileObject;
+    IrpSp->Parameters.FileSystemControl.FsControlCode = FSP_FSCTL_TRANSACT_INTERNAL;
+    IrpSp->Parameters.FileSystemControl.OutputBufferLength = 0 != PRequest ? sizeof(PVOID) : 0;
+    IrpSp->Parameters.FileSystemControl.InputBufferLength = 0 != Response ? Response->Size : 0;
+    IrpSp->Parameters.FileSystemControl.Type3InputBuffer = Response;
+
+    IoSetCompletionRoutine(Irp, FspSendIrpCompletion, 0, TRUE, TRUE, TRUE);
+
+    Result = IoCallDriver(DeviceObject, Irp);
+    ASSERT(STATUS_PENDING != Result);
+
+    return Result;
+}
+
 static NTSTATUS FspSendIrpCompletion(
     PDEVICE_OBJECT DeviceObject, PIRP Irp, PVOID Context0)
 {
     // !PAGED_CODE();
 
-    FSP_SEND_IRP_CONTEXT *Context = Context0;
+    if (0 != Context0)
+    {
+        FSP_SEND_IRP_CONTEXT *Context = Context0;
 
-    Context->IoStatus = Irp->IoStatus;
-    KeSetEvent(&Context->Event, 1, FALSE);
+        Context->IoStatus = Irp->IoStatus;
+        KeSetEvent(&Context->Event, 1, FALSE);
+    }
 
     IoFreeIrp(Irp);
 

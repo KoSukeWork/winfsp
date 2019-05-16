@@ -508,6 +508,8 @@ NTSTATUS FspSendQuerySecurityIrp(PDEVICE_OBJECT DeviceObject, PFILE_OBJECT FileO
 NTSTATUS FspSendQueryEaIrp(PDEVICE_OBJECT DeviceObject, PFILE_OBJECT FileObject,
     PFILE_GET_EA_INFORMATION GetEa, ULONG GetEaLength,
     PFILE_FULL_EA_INFORMATION Ea, PULONG PEaLength);
+NTSTATUS FspSendTransactInternalIrp(PDEVICE_OBJECT DeviceObject, PFILE_OBJECT FileObject,
+    FSP_FSCTL_TRANSACT_RSP *Response, FSP_FSCTL_TRANSACT_REQ **PRequest);
 NTSTATUS FspBufferUserBuffer(PIRP Irp, ULONG Length, LOCK_OPERATION Operation);
 NTSTATUS FspLockUserBuffer(PIRP Irp, ULONG Length, LOCK_OPERATION Operation);
 NTSTATUS FspMapLockedPagesInUserMode(PMDL Mdl, PVOID *PAddress, ULONG ExtraPriorityFlags);
@@ -875,6 +877,13 @@ BOOLEAN FspIoqRetryCompleteIrp(FSP_IOQ *Ioq, PIRP Irp, NTSTATUS *PResult);
 PIRP FspIoqNextCompleteIrp(FSP_IOQ *Ioq, PIRP BoundaryIrp);
 ULONG FspIoqRetriedIrpCount(FSP_IOQ *Ioq);
 
+#if defined(WINFSP_SYS_FUSE)
+/* FUSE I/O queue */
+typedef struct _FSP_FUSE_IOQ FSP_FUSE_IOQ;
+NTSTATUS FspFuseIoqCreate(FSP_FUSE_IOQ **PIoq);
+VOID FspFuseIoqDelete(FSP_FUSE_IOQ *Ioq);
+#endif
+
 /* meta cache */
 enum
 {
@@ -1063,6 +1072,9 @@ typedef struct
     FSP_DEVICE_EXTENSION Base;
     UINT32 InitDoneFsvrt:1, InitDoneIoq:1, InitDoneSec:1, InitDoneDir:1, InitDoneStrm:1, InitDoneEa:1,
         InitDoneCtxTab:1, InitDoneTimer:1, InitDoneInfo:1, InitDoneNotify:1, InitDoneStat:1;
+#if defined(WINFSP_SYS_FUSE)
+    UINT32 InitDoneFuseIoq:1;
+#endif
     PDEVICE_OBJECT FsctlDeviceObject;
     PDEVICE_OBJECT FsvrtDeviceObject;
     PDEVICE_OBJECT FsvolDeviceObject;
@@ -1072,6 +1084,9 @@ typedef struct
     UNICODE_STRING VolumePrefix;
     UNICODE_PREFIX_TABLE_ENTRY VolumePrefixEntry;
     FSP_IOQ *Ioq;
+#if defined(WINFSP_SYS_FUSE)
+    FSP_FUSE_IOQ *FuseIoq;
+#endif
     FSP_META_CACHE *SecurityCache;
     FSP_META_CACHE *DirInfoCache;
     FSP_META_CACHE *StreamInfoCache;

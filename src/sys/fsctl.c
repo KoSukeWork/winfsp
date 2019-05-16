@@ -86,6 +86,7 @@ static NTSTATUS FspFsctlFileSystemControl(
             break;
         case FSP_FSCTL_TRANSACT:
         case FSP_FSCTL_TRANSACT_BATCH:
+        case FSP_FSCTL_TRANSACT_INTERNAL:
             if (0 != IrpSp->FileObject->FsContext2)
                 Result = FspVolumeTransact(FsctlDeviceObject, Irp, IrpSp);
             break;

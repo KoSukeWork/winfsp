@@ -349,6 +349,15 @@ static NTSTATUS FspFsvolDeviceInit(PDEVICE_OBJECT DeviceObject)
         return Result;
     FsvolDeviceExtension->InitDoneIoq = 1;
 
+#if defined(WINFSP_SYS_FUSE)
+    /* create our FUSE Ioq */
+    Result = FspFuseIoqCreate(
+        &FsvolDeviceExtension->FuseIoq);
+    if (!NT_SUCCESS(Result))
+        return Result;
+    FsvolDeviceExtension->InitDoneFuseIoq = 1;
+#endif
+
     /* create our security meta cache */
     SecurityTimeout.QuadPart = FspTimeoutFromMillis(FsvolDeviceExtension->VolumeParams.SecurityTimeout);
         /* convert millis to nanos */
@@ -474,6 +483,12 @@ static VOID FspFsvolDeviceFini(PDEVICE_OBJECT DeviceObject)
     /* delete the security meta cache */
     if (FsvolDeviceExtension->InitDoneSec)
         FspMetaCacheDelete(FsvolDeviceExtension->SecurityCache);
+
+#if defined(WINFSP_SYS_FUSE)
+    /* delete the FUSE Ioq */
+    if (FsvolDeviceExtension->InitDoneFuseIoq)
+        FspFuseIoqDelete(FsvolDeviceExtension->FuseIoq);
+#endif
 
     /* delete the Ioq */
     if (FsvolDeviceExtension->InitDoneIoq)
