@@ -171,6 +171,7 @@
     <ClCompile Include="..\..\src\sys\fsctl.c" />
     <ClCompile Include="..\..\src\sys\fuse\fuse.c" />
     <ClCompile Include="..\..\src\sys\fuse\fuseioq.c" />
+    <ClCompile Include="..\..\src\sys\fuse\fuseop.c" />
     <ClCompile Include="..\..\src\sys\iop.c" />
     <ClCompile Include="..\..\src\sys\ioq.c" />
     <ClCompile Include="..\..\src\sys\lockctl.c" />

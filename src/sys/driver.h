@@ -368,6 +368,16 @@ VOID FspReleaseFromReadAhead(
     PVOID Context);
 VOID FspPropagateTopFlags(PIRP Irp, PIRP TopLevelIrp);
 
+/* FUSE */
+#if defined(WINFSP_SYS_FUSE)
+VOID FspFuseInitialize(VOID);
+NTSTATUS FspVolumeTransactFuse(
+    PDEVICE_OBJECT FsctlDeviceObject, PIRP Irp, PIO_STACK_LOCATION IrpSp);
+typedef struct _FSP_FUSE_IOQ FSP_FUSE_IOQ;
+NTSTATUS FspFuseIoqCreate(FSP_FUSE_IOQ **PIoq);
+VOID FspFuseIoqDelete(FSP_FUSE_IOQ *Ioq);
+#endif
+
 /* memory allocation */
 #define FspAlloc(Size)                  ExAllocatePoolWithTag(PagedPool, Size, FSP_ALLOC_INTERNAL_TAG)
 #define FspAllocNonPaged(Size)          ExAllocatePoolWithTag(NonPagedPool, Size, FSP_ALLOC_INTERNAL_TAG)
@@ -877,13 +887,6 @@ BOOLEAN FspIoqRetryCompleteIrp(FSP_IOQ *Ioq, PIRP Irp, NTSTATUS *PResult);
 PIRP FspIoqNextCompleteIrp(FSP_IOQ *Ioq, PIRP BoundaryIrp);
 ULONG FspIoqRetriedIrpCount(FSP_IOQ *Ioq);
 
-#if defined(WINFSP_SYS_FUSE)
-/* FUSE I/O queue */
-typedef struct _FSP_FUSE_IOQ FSP_FUSE_IOQ;
-NTSTATUS FspFuseIoqCreate(FSP_FUSE_IOQ **PIoq);
-VOID FspFuseIoqDelete(FSP_FUSE_IOQ *Ioq);
-#endif
-
 /* meta cache */
 enum
 {
@@ -1255,10 +1258,6 @@ NTSTATUS FspVolumeStop(
     PDEVICE_OBJECT FsctlDeviceObject, PIRP Irp, PIO_STACK_LOCATION IrpSp);
 NTSTATUS FspVolumeWork(
     PDEVICE_OBJECT FsvolDeviceObject, PIRP Irp, PIO_STACK_LOCATION IrpSp);
-#if defined(WINFSP_SYS_FUSE)
-NTSTATUS FspVolumeTransactFuse(
-    PDEVICE_OBJECT FsctlDeviceObject, PIRP Irp, PIO_STACK_LOCATION IrpSp);
-#endif
 
 /* file objects */
 #define FspFileNodeKind(FileNode)       \

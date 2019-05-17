@@ -113,6 +113,9 @@
     <ClCompile Include="..\..\src\sys\fuse\fuseioq.c">
       <Filter>Source\fuse</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\sys\fuse\fuseop.c">
+      <Filter>Source\fuse</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\sys\driver.h">

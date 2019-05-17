@@ -27,6 +27,9 @@
 #error FUSE functionality has not been tested without FSP_IOQ_PROCESS_NO_CANCEL
 #endif
 
+/* DriverEntry */
+VOID FspFuseInitialize(VOID);
+
 /* volume management */
 NTSTATUS FspVolumeTransactFuse(
     PDEVICE_OBJECT FsctlDeviceObject, PIRP Irp, PIO_STACK_LOCATION IrpSp);

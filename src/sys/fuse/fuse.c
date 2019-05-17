@@ -29,13 +29,19 @@ BOOLEAN FspFuseProcess(
     FSP_FUSE_PROTO_RSP *FuseResponse, FSP_FUSE_PROTO_REQ *FuseRequest);
 NTSTATUS FspVolumeTransactFuse(
     PDEVICE_OBJECT FsctlDeviceObject, PIRP Irp, PIO_STACK_LOCATION IrpSp);
+VOID FspFuseInitialize(VOID);
 
 #ifdef ALLOC_PRAGMA
 #pragma alloc_text(PAGE, FspFuseProcess)
 #pragma alloc_text(PAGE, FspVolumeTransactFuse)
+#pragma alloc_text(INIT, FspFuseInitialize)
 #endif
 
 static FSP_FUSE_PROCESS_DISPATCH *FspFuseProcessFunction[FspFsctlTransactKindCount];
+
+VOID FspFuseInitialize(VOID)
+{
+}
 
 BOOLEAN FspFuseProcess(
     FSP_FUSE_CONTEXT **PContext, FSP_FSCTL_TRANSACT_REQ *InternalRequest,

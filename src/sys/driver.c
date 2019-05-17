@@ -133,6 +133,10 @@ NTSTATUS DriverEntry(
 #pragma prefast(suppress:28175, "We are a filesystem: ok to access FastIoDispatch")
     DriverObject->FastIoDispatch = &FspFastIoDispatch;
 
+#if defined(WINFSP_SYS_FUSE)
+    FspFuseInitialize();
+#endif
+
     BOOLEAN InitDoneGRes = FALSE, InitDonePsBuf = FALSE;
     UNICODE_STRING DeviceSddl;
     UNICODE_STRING DeviceName;
