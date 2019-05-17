@@ -25,23 +25,26 @@
 #include <sys/fuse/fuse.h>
 
 BOOLEAN FspFuseOpCreate(
-    FSP_FUSE_CONTEXT** PContext, FSP_FSCTL_TRANSACT_REQ* InternalRequest,
-    FSP_FUSE_PROTO_RSP* FuseResponse, FSP_FUSE_PROTO_REQ* FuseRequest)
+    FSP_FUSE_CONTEXT **PContext, FSP_FSCTL_TRANSACT_REQ *InternalRequest,
+    FSP_FUSE_PROTO_RSP *FuseResponse, FSP_FUSE_PROTO_REQ *FuseRequest)
 {
+    *PContext = FspFuseContextInvl;
     return FALSE;
 }
 
 BOOLEAN FspFuseOpCleanup(
-    FSP_FUSE_CONTEXT** PContext, FSP_FSCTL_TRANSACT_REQ* InternalRequest,
-    FSP_FUSE_PROTO_RSP* FuseResponse, FSP_FUSE_PROTO_REQ* FuseRequest)
+    FSP_FUSE_CONTEXT **PContext, FSP_FSCTL_TRANSACT_REQ *InternalRequest,
+    FSP_FUSE_PROTO_RSP *FuseResponse, FSP_FUSE_PROTO_REQ *FuseRequest)
 {
+    *PContext = FspFuseContextInvl;
     return FALSE;
 }
 
 BOOLEAN FspFuseOpClose(
-    FSP_FUSE_CONTEXT** PContext, FSP_FSCTL_TRANSACT_REQ* InternalRequest,
-    FSP_FUSE_PROTO_RSP* FuseResponse, FSP_FUSE_PROTO_REQ* FuseRequest)
+    FSP_FUSE_CONTEXT **PContext, FSP_FSCTL_TRANSACT_REQ *InternalRequest,
+    FSP_FUSE_PROTO_RSP *FuseResponse, FSP_FUSE_PROTO_REQ *FuseRequest)
 {
+    *PContext = FspFuseContextInvl;
     return FALSE;
 }
 
