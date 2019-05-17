@@ -52,9 +52,9 @@ struct _FSP_FUSE_CONTEXT
 {
     FSP_FUSE_CONTEXT *DictNext;
     LIST_ENTRY ListEntry;
-    UINT32 id, counter;
     FSP_FSCTL_TRANSACT_REQ *InternalRequest;
     FSP_FSCTL_TRANSACT_RSP *InternalResponse;
+    int corostack[8];
 };
 BOOLEAN FspFuseProcess(
     FSP_FUSE_CONTEXT **PContext, FSP_FSCTL_TRANSACT_REQ *InternalRequest,
@@ -82,28 +82,29 @@ FSP_FUSE_CONTEXT *FspFuseIoqNextPending(FSP_FUSE_IOQ *Ioq); /* does not block! *
 /*
  * Simple coroutines
  *
- * All macros take a "state" parameter that must be a struct pointer that has a "counter" integer
- * field. This field must be initialized to 0 on initial entry to a coroutine block.
- *     coroblock(state)
+ * All macros take an "S" state parameter that must be a struct pointer that has a "corostack"
+ * integer array field. This field must be initialized to 0 on initial entry to a coroutine block.
+ *     coroblock(S)
  *         This macro introduces a coroutine statement block { ... } where the "yield" statement
  *         can be used. There can only be one such block within a function.
- *     coroyield(state)
+ *     coroyield(S)
  *         This macro exits the current coroutine statement block. The coroutine block can be
  *         reentered in which case execution will continue after the "yield" statement. It is
  *         an error to use "yield" outside of a coroutine block.
- *     corofini(state)
- *         This macro exits the current coroutine statement block and marks it as "finished".
- *         If the coroutine block is reentered it exits immediately. It is an error to use "fini"
+ *     coroexit(S)
+ *         This macro exits the current coroutine statement block and marks it as "exited".
+ *         If the coroutine block is reentered it exits immediately. It is an error to use "exit"
  *         outside of a coroutine block.
  */
-#define coroyield__(state, num)         \
-    do { (state)->counter = num; goto coroblock__; case num:; } while (0)
-#define coroblock(state)                if (0) coroblock__:; else switch ((state)->counter) case 0:
+#define coroblock(S)            if (0,0) coroblock__:; else switch (coroenter__((S)->corostack)) case 0:
+#define coroyield__(S, N)       do { coroleave__((S)->corostack, N); goto coroblock__; case N:; } while (0,0)
+#define coroexit(S)             do { coroleave__((S)->corostack, -1); goto coroblock__; } while (0,0)
 #if defined(__COUNTER__)
-#define coroyield(state)                coroyield__(state, __COUNTER__ + 1)
+#define coroyield(S)            coroyield__(S, __COUNTER__ + 1)
 #else
-#define coroyield(state)                coroyield__(state, __LINE__)
+#define coroyield(S)            coroyield__(S, __LINE__)
 #endif
-#define corofini(state)                 do { (state)->counter = -1; goto coroblock__; } while (0)
+static inline int coroenter__(int stack[]) { return stack[++stack[0]]; }
+static inline void coroleave__(int stack[], int num) { stack[stack[0]--] = num; }
 
 #endif
