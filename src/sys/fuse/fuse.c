@@ -24,7 +24,7 @@
 #if defined(WINFSP_SYS_FUSE)
 #include <sys/fuse/fuse.h>
 
-static BOOLEAN FspFuseProcess(
+BOOLEAN FspFuseProcess(
     FSP_FUSE_CONTEXT **PContext, FSP_FSCTL_TRANSACT_REQ *InternalRequest,
     FSP_FUSE_PROTO_RSP *FuseResponse, FSP_FUSE_PROTO_REQ *FuseRequest);
 NTSTATUS FspVolumeTransactFuse(

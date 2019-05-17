@@ -53,6 +53,9 @@ struct _FSP_FUSE_CONTEXT
     FSP_FSCTL_TRANSACT_REQ *InternalRequest;
     FSP_FSCTL_TRANSACT_RSP *InternalResponse;
 };
+BOOLEAN FspFuseProcess(
+    FSP_FUSE_CONTEXT **PContext, FSP_FSCTL_TRANSACT_REQ *InternalRequest,
+    FSP_FUSE_PROTO_RSP *FuseResponse, FSP_FUSE_PROTO_REQ *FuseRequest);
 #define FspFuseProcessFini              ((FSP_FSCTL_TRANSACT_REQ *)0)   /* finalize Context */
 #define FspFuseProcessNorm              ((FSP_FSCTL_TRANSACT_REQ *)1)   /* normal processing */
 #define FspFuseContextInvl              ((FSP_FUSE_CONTEXT *)1) /* STATUS_INVALID_DEVICE_REQUEST */
@@ -61,7 +64,10 @@ struct _FSP_FUSE_CONTEXT
 typedef struct _FSP_FUSE_IOQ FSP_FUSE_IOQ;
 struct _FSP_FUSE_IOQ
 {
-    UINT32 Dummy;
+    KSPIN_LOCK SpinLock;
+    LIST_ENTRY PendingList, ProcessList;
+    ULONG ProcessBucketCount;
+    FSP_FUSE_CONTEXT *ProcessBuckets[];
 };
 NTSTATUS FspFuseIoqCreate(FSP_FUSE_IOQ **PIoq);
 VOID FspFuseIoqDelete(FSP_FUSE_IOQ *Ioq);
