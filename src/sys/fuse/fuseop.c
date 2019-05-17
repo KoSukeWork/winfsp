@@ -24,4 +24,25 @@
 #if defined(WINFSP_SYS_FUSE)
 #include <sys/fuse/fuse.h>
 
+BOOLEAN FspFuseOpCreate(
+    FSP_FUSE_CONTEXT** PContext, FSP_FSCTL_TRANSACT_REQ* InternalRequest,
+    FSP_FUSE_PROTO_RSP* FuseResponse, FSP_FUSE_PROTO_REQ* FuseRequest)
+{
+    return FALSE;
+}
+
+BOOLEAN FspFuseOpCleanup(
+    FSP_FUSE_CONTEXT** PContext, FSP_FSCTL_TRANSACT_REQ* InternalRequest,
+    FSP_FUSE_PROTO_RSP* FuseResponse, FSP_FUSE_PROTO_REQ* FuseRequest)
+{
+    return FALSE;
+}
+
+BOOLEAN FspFuseOpClose(
+    FSP_FUSE_CONTEXT** PContext, FSP_FSCTL_TRANSACT_REQ* InternalRequest,
+    FSP_FUSE_PROTO_RSP* FuseResponse, FSP_FUSE_PROTO_REQ* FuseRequest)
+{
+    return FALSE;
+}
+
 #endif

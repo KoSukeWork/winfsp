@@ -54,7 +54,7 @@ struct _FSP_FUSE_CONTEXT
     LIST_ENTRY ListEntry;
     FSP_FSCTL_TRANSACT_REQ *InternalRequest;
     FSP_FSCTL_TRANSACT_RSP *InternalResponse;
-    int corostack[8];
+    int corostack[4];
 };
 BOOLEAN FspFuseProcess(
     FSP_FUSE_CONTEXT **PContext, FSP_FSCTL_TRANSACT_REQ *InternalRequest,
@@ -62,6 +62,11 @@ BOOLEAN FspFuseProcess(
 #define FspFuseProcessFini              ((FSP_FSCTL_TRANSACT_REQ *)0)   /* finalize Context */
 #define FspFuseProcessNorm              ((FSP_FSCTL_TRANSACT_REQ *)1)   /* normal processing */
 #define FspFuseContextInvl              ((FSP_FUSE_CONTEXT *)1) /* STATUS_INVALID_DEVICE_REQUEST */
+
+/* FUSE processing functions */
+FSP_FUSE_PROCESS_DISPATCH FspFuseOpCreate;
+FSP_FUSE_PROCESS_DISPATCH FspFuseOpCleanup;
+FSP_FUSE_PROCESS_DISPATCH FspFuseOpClose;
 
 /* FUSE I/O queue */
 typedef struct _FSP_FUSE_IOQ FSP_FUSE_IOQ;

@@ -41,6 +41,27 @@ static FSP_FUSE_PROCESS_DISPATCH *FspFuseProcessFunction[FspFsctlTransactKindCou
 
 VOID FspFuseInitialize(VOID)
 {
+    FspFuseProcessFunction[FspFsctlTransactCreateKind] = FspFuseOpCreate;
+    //FspFuseProcessFunction[FspFsctlTransactOverwriteKind] = FspFuseOpOverwrite;
+    FspFuseProcessFunction[FspFsctlTransactCleanupKind] = FspFuseOpCleanup;
+    FspFuseProcessFunction[FspFsctlTransactCloseKind] = FspFuseOpClose;
+    //FspFuseProcessFunction[FspFsctlTransactReadKind] = FspFuseOpRead;
+    //FspFuseProcessFunction[FspFsctlTransactWriteKind] = FspFuseOpWrite;
+    //FspFuseProcessFunction[FspFsctlTransactQueryInformationKind] = FspFuseOpQueryInformation;
+    //FspFuseProcessFunction[FspFsctlTransactSetInformationKind] = FspFuseOpSetInformation;
+    //FspFuseProcessFunction[FspFsctlTransactQueryEaKind] = FspFuseOpQueryEa;
+    //FspFuseProcessFunction[FspFsctlTransactSetEaKind] = FspFuseOpSetEa;
+    //FspFuseProcessFunction[FspFsctlTransactFlushBuffersKind] = FspFuseOpFlushBuffers;
+    //FspFuseProcessFunction[FspFsctlTransactQueryVolumeInformationKind] = FspFuseOpQueryVolumeInformation;
+    //FspFuseProcessFunction[FspFsctlTransactSetVolumeInformationKind] = FspFuseOpSetVolumeInformation;
+    //FspFuseProcessFunction[FspFsctlTransactQueryDirectoryKind] = FspFuseOpQueryDirectory;
+    //FspFuseProcessFunction[FspFsctlTransactFileSystemControlKind] = FspFuseOpFileSystemControl;
+    //FspFuseProcessFunction[FspFsctlTransactDeviceControlKind] = FspFuseOpDeviceControl;
+    //FspFuseProcessFunction[FspFsctlTransactShutdownKind] = FspFuseOpShutdown;
+    //FspFuseProcessFunction[FspFsctlTransactLockControlKind] = FspFuseOpLockControl;
+    //FspFuseProcessFunction[FspFsctlTransactQuerySecurityKind] = FspFuseOpQuerySecurity;
+    //FspFuseProcessFunction[FspFsctlTransactSetSecurityKind] = FspFuseOpSetSecurity;
+    //FspFuseProcessFunction[FspFsctlTransactQueryStreamInformationKind] = FspFuseOpQueryStreamInformation;
 }
 
 BOOLEAN FspFuseProcess(
@@ -53,6 +74,8 @@ BOOLEAN FspFuseProcess(
         return FALSE;
 
     UINT32 Kind = 0 == *PContext ? InternalRequest->Kind : (*PContext)->InternalRequest->Kind;
+
+    ASSERT(FspFsctlTransactKindCount > Kind);
 
     if (0 != FspFuseProcessFunction[Kind])
         return FspFuseProcessFunction[Kind](PContext, InternalRequest, FuseResponse, FuseRequest);
