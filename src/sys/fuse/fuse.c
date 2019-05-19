@@ -167,7 +167,7 @@ request:
                  * The corresponding IRP was moved to the Process state by
                  * FspSendTransactInternalIrp. We could try completing the IRP,
                  * but if we are in such a low-memory condition we likely cannot
-                 * do see easily.
+                 * do so easily.
                  *
                  * It is expected instead that the user mode file system should bring
                  * down the file system and our I/O queue (thus canceling the IRP).
