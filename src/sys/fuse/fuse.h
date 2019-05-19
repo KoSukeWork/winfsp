@@ -54,7 +54,7 @@ struct _FSP_FUSE_CONTEXT
     LIST_ENTRY ListEntry;
     FSP_FSCTL_TRANSACT_REQ *InternalRequest;
     FSP_FSCTL_TRANSACT_RSP *InternalResponse;
-    int corostack[4];
+    INT CoroState;
 };
 BOOLEAN FspFuseProcess(
     FSP_FUSE_CONTEXT **PContext, FSP_FSCTL_TRANSACT_REQ *InternalRequest,
@@ -87,29 +87,27 @@ FSP_FUSE_CONTEXT *FspFuseIoqNextPending(FSP_FUSE_IOQ *Ioq); /* does not block! *
 /*
  * Simple coroutines
  *
- * All macros take an "S" state parameter that must be a struct pointer that has a "corostack"
- * integer array field. This field must be initialized to 0 on initial entry to a coroutine block.
- *     coroblock(S)
+ * The coroutine state is maintained in an integer variable whose address is passed to the "block"
+ * statement. This variable must be initialized to 0 on initial entry to a coroutine block.
+ *     coro_block(S)
  *         This macro introduces a coroutine statement block { ... } where the "yield" statement
  *         can be used. There can only be one such block within a function.
- *     coroyield(S)
+ *     coro_yield
  *         This macro exits the current coroutine statement block. The coroutine block can be
  *         reentered in which case execution will continue after the "yield" statement. It is
  *         an error to use "yield" outside of a coroutine block.
- *     coroexit(S)
- *         This macro exits the current coroutine statement block and marks it as "exited".
+ *     coro_exit
+ *         This macro exits the current coroutine statement block and marks it as "complete".
  *         If the coroutine block is reentered it exits immediately. It is an error to use "exit"
  *         outside of a coroutine block.
  */
-#define coroblock(S)            if (0,0) coroblock__:; else switch (coroenter__((S)->corostack)) case 0:
-#define coroyield__(S, N)       do { coroleave__((S)->corostack, N); goto coroblock__; case N:; } while (0,0)
-#define coroexit(S)             do { coroleave__((S)->corostack, -1); goto coroblock__; } while (0,0)
+#define coro_block(S)           int *coroS__ = (S); if (0,0) coroY__:; else switch (*coroS__) case 0:
+#define coro_yield__(N)         do { *coroS__ = N; goto coroY__; case N:; } while (0,0)
+#define coro_exit               do { *coroS__ = -1; goto coroY__; } while (0,0)
 #if defined(__COUNTER__)
-#define coroyield(S)            coroyield__(S, __COUNTER__ + 1)
+#define coro_yield              coro_yield__(__COUNTER__ + 1)
 #else
-#define coroyield(S)            coroyield__(S, __LINE__)
+#define coro_yield              coro_yield__(__LINE__)
 #endif
-static inline int coroenter__(int stack[]) { return stack[++stack[0]]; }
-static inline void coroleave__(int stack[], int num) { stack[stack[0]--] = num; }
 
 #endif
