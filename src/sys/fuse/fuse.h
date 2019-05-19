@@ -61,7 +61,13 @@ BOOLEAN FspFuseProcess(
     FSP_FUSE_PROTO_RSP *FuseResponse, FSP_FUSE_PROTO_REQ *FuseRequest);
 #define FspFuseProcessFini              ((FSP_FSCTL_TRANSACT_REQ *)0)   /* finalize Context */
 #define FspFuseProcessNorm              ((FSP_FSCTL_TRANSACT_REQ *)1)   /* normal processing */
-#define FspFuseContextInvl              ((FSP_FUSE_CONTEXT *)1) /* STATUS_INVALID_DEVICE_REQUEST */
+#define FspFuseContextStatus(S)         \
+    (                                   \
+        ASSERT(0xC0000000 == ((UINT32)(S) & 0xFFFF0000)),\
+        (FSP_FUSE_CONTEXT *)(UINT_PTR)((UINT32)(S) & 0x0000FFFF)\
+    )
+#define FspFuseContextIsStatus(C)       ((UINT_PTR)0x0000FFFF >= (UINT_PTR)(C))
+#define FspFuseContextToStatus(C)       ((NTSTATUS)(0xC0000000 | (UINT32)(UINT_PTR)(C)))
 
 /* FUSE processing functions */
 FSP_FUSE_PROCESS_DISPATCH FspFuseOpCreate;

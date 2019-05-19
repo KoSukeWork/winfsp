@@ -70,7 +70,7 @@ BOOLEAN FspFuseProcess(
 {
     PAGED_CODE();
 
-    if (FspFuseContextInvl == *PContext)
+    if (FspFuseContextIsStatus(*PContext))
         return FALSE;
 
     UINT32 Kind = 0 == *PContext ? InternalRequest->Kind : (*PContext)->InternalRequest->Kind;
@@ -81,7 +81,7 @@ BOOLEAN FspFuseProcess(
         return FspFuseProcessFunction[Kind](PContext, InternalRequest, FuseResponse, FuseRequest);
     else
     {
-        *PContext = FspFuseContextInvl;
+        *PContext = FspFuseContextStatus(STATUS_INVALID_DEVICE_REQUEST);
         return FALSE;
     }
 }
@@ -186,13 +186,13 @@ request:
             FspFuseIoqStartProcessing(FsvolDeviceExtension->FuseIoq, Context);
         else
         {
-            if (FspFuseContextInvl == Context)
+            if (FspFuseContextIsStatus(Context))
             {
                 RtlZeroMemory(&InternalResponse, sizeof InternalResponse);
                 InternalResponse.Size = sizeof InternalResponse;
                 InternalResponse.Kind = InternalRequest->Kind;
                 InternalResponse.Hint = InternalRequest->Hint;
-                InternalResponse.IoStatus.Status = (UINT32)STATUS_INVALID_DEVICE_REQUEST;
+                InternalResponse.IoStatus.Status = FspFuseContextToStatus(Context);
                 Result = FspSendTransactInternalIrp(
                     FsvolDeviceObject, IrpSp->FileObject, &InternalResponse, 0);
             }
