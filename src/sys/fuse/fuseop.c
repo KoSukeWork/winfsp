@@ -90,8 +90,9 @@ static BOOLEAN FspFuseOpCreate_FileCreate(
 
     FSP_FUSE_CONTEXT_CREATE *Context = (PVOID)*PContext;
 
-    coro_block (&Context->Base.CoroState)
+    coro_block (Context->Base.CoroState)
     {
+        coro_await (1, 2);
         coro_yield;
         coro_exit;
     }
