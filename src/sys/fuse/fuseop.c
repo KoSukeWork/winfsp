@@ -68,10 +68,34 @@ BOOLEAN FspFuseOpClose(
 #pragma alloc_text(PAGE, FspFuseOpClose)
 #endif
 
-typedef struct
+#if 0
+static VOID FspFuseLookupPath(FSP_FUSE_CONTEXT **PContext)
 {
-    FSP_FUSE_CONTEXT Base;
-} FSP_FUSE_CONTEXT_CREATE;
+    FSP_FUSE_CONTEXT *Context = *PContext;
+
+    coro_block (Context->CoroState)
+    {
+        Context->PosixPath = FspPosixMapWindowsToPosixPathEx();
+
+        for (;;)
+        {
+        }
+    }
+
+    PWSTR P, Start;
+    UINT64 Ino;
+
+    P = Path;
+    for (;;)
+    {
+        while (L'\\' == *P)
+            P++;
+        Start = P;
+        while (*P && L'\\' != *P)
+            P++;
+    }
+}
+#endif
 
 static BOOLEAN FspFuseOpCreate_FileOpenTargetDirectory(
     FSP_FUSE_CONTEXT **PContext, FSP_FSCTL_TRANSACT_REQ *InternalRequest,
@@ -88,9 +112,9 @@ static BOOLEAN FspFuseOpCreate_FileCreate(
 {
     PAGED_CODE();
 
-    FSP_FUSE_CONTEXT_CREATE *Context = (PVOID)*PContext;
+    FSP_FUSE_CONTEXT *Context = *PContext;
 
-    coro_block (Context->Base.CoroState)
+    coro_block (Context->CoroState)
     {
         coro_await (1, 2);
         coro_yield;
@@ -151,7 +175,7 @@ BOOLEAN FspFuseOpCreate(
 {
     PAGED_CODE();
 
-    FSP_FUSE_CONTEXT_CREATE *Context = (PVOID)*PContext;
+    FSP_FUSE_CONTEXT *Context = *PContext;
 
     if (FspFuseProcessFini == InternalRequest)
     {
@@ -163,8 +187,8 @@ BOOLEAN FspFuseOpCreate(
     {
         Context = FspAlloc(sizeof *Context);
         RtlZeroMemory(Context, sizeof *Context);
-        Context->Base.InternalRequest = InternalRequest;
-        *PContext = &Context->Base;
+        Context->InternalRequest = InternalRequest;
+        *PContext = Context;
     }
 
     if (InternalRequest->Req.Create.OpenTargetDirectory)
