@@ -1628,6 +1628,21 @@ VOID FspFileNodeOplockComplete(PVOID Context, PIRP Irp);
     FspFileNodeOplockCheckAsyncEx(FileNode, AcquireFlags, (PVOID)(UINT_PTR)PrepareContext, Irp,\
         FspFileNodeOplockComplete,FspFileNodeOplockPrepare)
 
+/* posix interop */
+NTSTATUS FspPosixMapUidToSid(UINT32 Uid, PSID *PSid);
+NTSTATUS FspPosixMapSidToUid(PSID Sid, PUINT32 PUid);
+VOID FspDeleteSid(PSID Sid, NTSTATUS (*CreateFunc)());
+NTSTATUS FspPosixMapPermissionsToSecurityDescriptor(
+    UINT32 Uid, UINT32 Gid, UINT32 Mode,
+    PSECURITY_DESCRIPTOR *PSecurityDescriptor);
+NTSTATUS FspPosixMapSecurityDescriptorToPermissions(
+    PSECURITY_DESCRIPTOR SecurityDescriptor,
+    PUINT32 PUid, PUINT32 PGid, PUINT32 PMode);
+NTSTATUS FspPosixMapWindowsToPosixPathEx(PWSTR WindowsPath, char **PPosixPath,
+    BOOLEAN Translate);
+NTSTATUS FspPosixMapPosixToWindowsPathEx(const char *PosixPath, PWSTR *PWindowsPath,
+    BOOLEAN Translate);
+
 /* multiversion support */
 typedef
 NTKERNELAPI
