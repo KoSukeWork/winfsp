@@ -155,6 +155,7 @@
     <FilesToPackage Include="$(TargetPath)" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\src\ku\posix.c" />
     <ClCompile Include="..\..\src\sys\cleanup.c" />
     <ClCompile Include="..\..\src\sys\close.c" />
     <ClCompile Include="..\..\src\sys\create.c" />
@@ -191,6 +192,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\inc\winfsp\fsctl.h" />
+    <ClInclude Include="..\..\src\ku\library.h" />
     <ClInclude Include="..\..\src\sys\driver.h" />
     <ClInclude Include="..\..\src\sys\fuse\fuse.h" />
     <ClInclude Include="..\..\src\sys\fuse\proto.h" />

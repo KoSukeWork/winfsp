@@ -15,6 +15,9 @@
     <Filter Include="Source\fuse">
       <UniqueIdentifier>{9688b8bb-f0ef-4270-9ffc-feb09e337ecb}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source\ku">
+      <UniqueIdentifier>{90dc0baa-fb15-41a6-a9f4-6ff247bf7925}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\sys\driver.c">
@@ -116,6 +119,9 @@
     <ClCompile Include="..\..\src\sys\fuse\fuseop.c">
       <Filter>Source\fuse</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\ku\posix.c">
+      <Filter>Source\ku</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\sys\driver.h">
@@ -129,6 +135,9 @@
     </ClInclude>
     <ClInclude Include="..\..\src\sys\fuse\proto.h">
       <Filter>Source\fuse</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\ku\library.h">
+      <Filter>Source\ku</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
