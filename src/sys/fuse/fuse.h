@@ -55,13 +55,8 @@ struct _FSP_FUSE_CONTEXT
     FSP_FSCTL_TRANSACT_REQ *InternalRequest;
     FSP_FSCTL_TRANSACT_RSP *InternalResponse;
     INT CoroState[4];
-    union
-    {
-        struct
-        {
-            UINT64 ino;
-        } Create;
-    } Ctx;
+    PSTR PosixPath, PosixPathRem;
+    UINT64 Ino;
 };
 BOOLEAN FspFuseProcess(
     FSP_FUSE_CONTEXT **PContext, FSP_FSCTL_TRANSACT_REQ *InternalRequest,

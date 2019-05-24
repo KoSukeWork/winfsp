@@ -68,34 +68,85 @@ BOOLEAN FspFuseOpClose(
 #pragma alloc_text(PAGE, FspFuseOpClose)
 #endif
 
-#if 0
-static VOID FspFuseLookupPath(FSP_FUSE_CONTEXT **PContext)
+static VOID FspFuseLookup(
+    FSP_FUSE_CONTEXT **PContext, FSP_FSCTL_TRANSACT_REQ *InternalRequest,
+    FSP_FUSE_PROTO_RSP *FuseResponse, FSP_FUSE_PROTO_REQ *FuseRequest)
 {
+    PAGED_CODE();
+
     FSP_FUSE_CONTEXT *Context = *PContext;
 
     coro_block (Context->CoroState)
     {
-        Context->PosixPath = FspPosixMapWindowsToPosixPathEx();
+        coro_exit;
+    }
+}
+
+static VOID FspFuseLookupPath(
+    FSP_FUSE_CONTEXT **PContext, FSP_FSCTL_TRANSACT_REQ *InternalRequest,
+    FSP_FUSE_PROTO_RSP *FuseResponse, FSP_FUSE_PROTO_REQ *FuseRequest)
+{
+    PAGED_CODE();
+
+    FSP_FUSE_CONTEXT *Context = *PContext;
+    NTSTATUS Result;
+
+    coro_block (Context->CoroState)
+    {
+        Result = FspPosixMapWindowsToPosixPathEx(
+            (PWSTR)Context->InternalRequest->Buffer,
+            &Context->PosixPath,
+            TRUE);
+        if (!NT_SUCCESS(Result))
+        {
+            Context->InternalResponse->IoStatus.Status = Result;
+            Context->InternalResponse->IoStatus.Information = 0;
+            coro_exit;
+        }
+
+        Context->PosixPathRem = Context->PosixPath;
+        Context->Ino = FSP_FUSE_PROTO_ROOT_ID;
 
         for (;;)
         {
+            PSTR P, Name;
+
+            P = Context->PosixPathRem;
+            while (L'\\' == *P)
+                P++;
+            Name = P;
+            while (*P && L'\\' != *P)
+                P++;
+            Context->PosixPathRem = P;
+
+            if (Name == P)
+            {
+                /* !!!: REVISIT */
+                Context->InternalResponse->IoStatus.Status = STATUS_SUCCESS;
+                Context->InternalResponse->IoStatus.Information = 0;
+                coro_exit;
+            }
+
+            FuseRequest->len = (UINT32)(FSP_FUSE_PROTO_REQ_SIZE(req.lookup) + (P - Name) + 1);
+            ASSERT(FSP_FUSE_PROTO_REQ_SIZEMIN >= FuseRequest->len);
+            FuseRequest->opcode = FSP_FUSE_PROTO_OPCODE_LOOKUP;
+            FuseRequest->unique = (UINT64)(UINT_PTR)Context;
+            FuseRequest->nodeid = Context->Ino;
+            FuseRequest->uid = 0; // !!!: REVISIT
+            FuseRequest->gid = 0; // !!!: REVISIT
+            FuseRequest->pid = 0; // !!!: REVISIT
+            RtlCopyMemory(FuseRequest->req.lookup.name, Name, P - Name);
+            FuseRequest->req.lookup.name[P - Name] = '\0';
+
+            coro_await (FspFuseLookup(PContext, InternalRequest, FuseResponse, FuseRequest));
+
+            Context->Ino = FuseResponse->rsp.lookup.entry.nodeid;
+            // !!!: REVISIT: access control
+
+            coro_yield;
         }
     }
-
-    PWSTR P, Start;
-    UINT64 Ino;
-
-    P = Path;
-    for (;;)
-    {
-        while (L'\\' == *P)
-            P++;
-        Start = P;
-        while (*P && L'\\' != *P)
-            P++;
-    }
 }
-#endif
 
 static BOOLEAN FspFuseOpCreate_FileOpenTargetDirectory(
     FSP_FUSE_CONTEXT **PContext, FSP_FSCTL_TRANSACT_REQ *InternalRequest,
