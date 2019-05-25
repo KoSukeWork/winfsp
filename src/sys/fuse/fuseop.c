@@ -24,38 +24,20 @@
 #if defined(WINFSP_SYS_FUSE)
 #include <sys/fuse/fuse.h>
 
-static BOOLEAN FspFuseOpCreate_FileOpenTargetDirectory(
-    FSP_FUSE_CONTEXT **PContext, FSP_FSCTL_TRANSACT_REQ *InternalRequest,
-    FSP_FUSE_PROTO_RSP *FuseResponse, FSP_FUSE_PROTO_REQ *FuseRequest);
-static BOOLEAN FspFuseOpCreate_FileCreate(
-    FSP_FUSE_CONTEXT **PContext, FSP_FSCTL_TRANSACT_REQ *InternalRequest,
-    FSP_FUSE_PROTO_RSP *FuseResponse, FSP_FUSE_PROTO_REQ *FuseRequest);
-static BOOLEAN FspFuseOpCreate_FileOpen(
-    FSP_FUSE_CONTEXT **PContext, FSP_FSCTL_TRANSACT_REQ *InternalRequest,
-    FSP_FUSE_PROTO_RSP *FuseResponse, FSP_FUSE_PROTO_REQ *FuseRequest);
-static BOOLEAN FspFuseOpCreate_FileOpenIf(
-    FSP_FUSE_CONTEXT **PContext, FSP_FSCTL_TRANSACT_REQ *InternalRequest,
-    FSP_FUSE_PROTO_RSP *FuseResponse, FSP_FUSE_PROTO_REQ *FuseRequest);
-static BOOLEAN FspFuseOpCreate_FileOverwrite(
-    FSP_FUSE_CONTEXT **PContext, FSP_FSCTL_TRANSACT_REQ *InternalRequest,
-    FSP_FUSE_PROTO_RSP *FuseResponse, FSP_FUSE_PROTO_REQ *FuseRequest);
-static BOOLEAN FspFuseOpCreate_FileOverwriteIf(
-    FSP_FUSE_CONTEXT **PContext, FSP_FSCTL_TRANSACT_REQ *InternalRequest,
-    FSP_FUSE_PROTO_RSP *FuseResponse, FSP_FUSE_PROTO_REQ *FuseRequest);
-static BOOLEAN FspFuseOpCreate_InvalidParameter(
-    FSP_FUSE_CONTEXT **PContext, FSP_FSCTL_TRANSACT_REQ *InternalRequest,
-    FSP_FUSE_PROTO_RSP *FuseResponse, FSP_FUSE_PROTO_REQ *FuseRequest);
-BOOLEAN FspFuseOpCreate(
-    FSP_FUSE_CONTEXT **PContext, FSP_FSCTL_TRANSACT_REQ *InternalRequest,
-    FSP_FUSE_PROTO_RSP *FuseResponse, FSP_FUSE_PROTO_REQ *FuseRequest);
-BOOLEAN FspFuseOpCleanup(
-    FSP_FUSE_CONTEXT **PContext, FSP_FSCTL_TRANSACT_REQ *InternalRequest,
-    FSP_FUSE_PROTO_RSP *FuseResponse, FSP_FUSE_PROTO_REQ *FuseRequest);
-BOOLEAN FspFuseOpClose(
-    FSP_FUSE_CONTEXT **PContext, FSP_FSCTL_TRANSACT_REQ *InternalRequest,
-    FSP_FUSE_PROTO_RSP *FuseResponse, FSP_FUSE_PROTO_REQ *FuseRequest);
+static VOID FspFuseLookupPath(FSP_FUSE_CONTEXT *Context);
+static BOOLEAN FspFuseOpCreate_FileOpenTargetDirectory(FSP_FUSE_CONTEXT *Context);
+static BOOLEAN FspFuseOpCreate_FileCreate(FSP_FUSE_CONTEXT *Context);
+static BOOLEAN FspFuseOpCreate_FileOpen(FSP_FUSE_CONTEXT *Context);
+static BOOLEAN FspFuseOpCreate_FileOpenIf(FSP_FUSE_CONTEXT *Context);
+static BOOLEAN FspFuseOpCreate_FileOverwrite(FSP_FUSE_CONTEXT *Context);
+static BOOLEAN FspFuseOpCreate_FileOverwriteIf(FSP_FUSE_CONTEXT *Context);
+static BOOLEAN FspFuseOpCreate_InvalidParameter(FSP_FUSE_CONTEXT *Context);
+BOOLEAN FspFuseOpCreate(FSP_FUSE_CONTEXT *Context);
+BOOLEAN FspFuseOpCleanup(FSP_FUSE_CONTEXT *Context);
+BOOLEAN FspFuseOpClose(FSP_FUSE_CONTEXT *Context);
 
 #ifdef ALLOC_PRAGMA
+#pragma alloc_text(PAGE, FspFuseLookupPath)
 #pragma alloc_text(PAGE, FspFuseOpCreate_FileOpenTargetDirectory)
 #pragma alloc_text(PAGE, FspFuseOpCreate_FileCreate)
 #pragma alloc_text(PAGE, FspFuseOpCreate_FileOpen)
@@ -68,31 +50,14 @@ BOOLEAN FspFuseOpClose(
 #pragma alloc_text(PAGE, FspFuseOpClose)
 #endif
 
-static VOID FspFuseLookup(
-    FSP_FUSE_CONTEXT **PContext, FSP_FSCTL_TRANSACT_REQ *InternalRequest,
-    FSP_FUSE_PROTO_RSP *FuseResponse, FSP_FUSE_PROTO_REQ *FuseRequest)
+static VOID FspFuseLookupPath(FSP_FUSE_CONTEXT *Context)
 {
     PAGED_CODE();
 
-    FSP_FUSE_CONTEXT *Context = *PContext;
-
     coro_block (Context->CoroState)
     {
-        coro_exit;
-    }
-}
+        NTSTATUS Result;
 
-static VOID FspFuseLookupPath(
-    FSP_FUSE_CONTEXT **PContext, FSP_FSCTL_TRANSACT_REQ *InternalRequest,
-    FSP_FUSE_PROTO_RSP *FuseResponse, FSP_FUSE_PROTO_REQ *FuseRequest)
-{
-    PAGED_CODE();
-
-    FSP_FUSE_CONTEXT *Context = *PContext;
-    NTSTATUS Result;
-
-    coro_block (Context->CoroState)
-    {
         Result = FspPosixMapWindowsToPosixPathEx(
             (PWSTR)Context->InternalRequest->Buffer,
             &Context->PosixPath,
@@ -127,20 +92,20 @@ static VOID FspFuseLookupPath(
                 coro_exit;
             }
 
-            FuseRequest->len = (UINT32)(FSP_FUSE_PROTO_REQ_SIZE(req.lookup) + (P - Name) + 1);
-            ASSERT(FSP_FUSE_PROTO_REQ_SIZEMIN >= FuseRequest->len);
-            FuseRequest->opcode = FSP_FUSE_PROTO_OPCODE_LOOKUP;
-            FuseRequest->unique = (UINT64)(UINT_PTR)Context;
-            FuseRequest->nodeid = Context->Ino;
-            FuseRequest->uid = 0; // !!!: REVISIT
-            FuseRequest->gid = 0; // !!!: REVISIT
-            FuseRequest->pid = 0; // !!!: REVISIT
-            RtlCopyMemory(FuseRequest->req.lookup.name, Name, P - Name);
-            FuseRequest->req.lookup.name[P - Name] = '\0';
+            Context->FuseRequest->len = (UINT32)(FSP_FUSE_PROTO_REQ_SIZE(req.lookup) + (P - Name) + 1);
+            ASSERT(FSP_FUSE_PROTO_REQ_SIZEMIN >= Context->FuseRequest->len);
+            Context->FuseRequest->opcode = FSP_FUSE_PROTO_OPCODE_LOOKUP;
+            Context->FuseRequest->unique = (UINT64)(UINT_PTR)Context;
+            Context->FuseRequest->nodeid = Context->Ino;
+            Context->FuseRequest->uid = 0; // !!!: REVISIT
+            Context->FuseRequest->gid = 0; // !!!: REVISIT
+            Context->FuseRequest->pid = 0; // !!!: REVISIT
+            RtlCopyMemory(Context->FuseRequest->req.lookup.name, Name, P - Name);
+            Context->FuseRequest->req.lookup.name[P - Name] = '\0';
 
-            coro_await (FspFuseLookup(PContext, InternalRequest, FuseResponse, FuseRequest));
+            coro_yield;
 
-            Context->Ino = FuseResponse->rsp.lookup.entry.nodeid;
+            Context->Ino = Context->FuseResponse->rsp.lookup.entry.nodeid;
             // !!!: REVISIT: access control
 
             coro_yield;
@@ -148,145 +113,91 @@ static VOID FspFuseLookupPath(
     }
 }
 
-static BOOLEAN FspFuseOpCreate_FileOpenTargetDirectory(
-    FSP_FUSE_CONTEXT **PContext, FSP_FSCTL_TRANSACT_REQ *InternalRequest,
-    FSP_FUSE_PROTO_RSP *FuseResponse, FSP_FUSE_PROTO_REQ *FuseRequest)
+static BOOLEAN FspFuseOpCreate_FileOpenTargetDirectory(FSP_FUSE_CONTEXT *Context)
 {
     PAGED_CODE();
 
     return FALSE;
 }
 
-static BOOLEAN FspFuseOpCreate_FileCreate(
-    FSP_FUSE_CONTEXT **PContext, FSP_FSCTL_TRANSACT_REQ *InternalRequest,
-    FSP_FUSE_PROTO_RSP *FuseResponse, FSP_FUSE_PROTO_REQ *FuseRequest)
-{
-    PAGED_CODE();
-
-    FSP_FUSE_CONTEXT *Context = *PContext;
-
-    coro_block (Context->CoroState)
-    {
-        coro_await (1, 2);
-        coro_yield;
-        coro_exit;
-    }
-
-    return FALSE;
-}
-
-static BOOLEAN FspFuseOpCreate_FileOpen(
-    FSP_FUSE_CONTEXT **PContext, FSP_FSCTL_TRANSACT_REQ *InternalRequest,
-    FSP_FUSE_PROTO_RSP *FuseResponse, FSP_FUSE_PROTO_REQ *FuseRequest)
+static BOOLEAN FspFuseOpCreate_FileCreate(FSP_FUSE_CONTEXT *Context)
 {
     PAGED_CODE();
 
     return FALSE;
 }
 
-static BOOLEAN FspFuseOpCreate_FileOpenIf(
-    FSP_FUSE_CONTEXT **PContext, FSP_FSCTL_TRANSACT_REQ *InternalRequest,
-    FSP_FUSE_PROTO_RSP *FuseResponse, FSP_FUSE_PROTO_REQ *FuseRequest)
+static BOOLEAN FspFuseOpCreate_FileOpen(FSP_FUSE_CONTEXT *Context)
 {
     PAGED_CODE();
 
     return FALSE;
 }
 
-static BOOLEAN FspFuseOpCreate_FileOverwrite(
-    FSP_FUSE_CONTEXT **PContext, FSP_FSCTL_TRANSACT_REQ *InternalRequest,
-    FSP_FUSE_PROTO_RSP *FuseResponse, FSP_FUSE_PROTO_REQ *FuseRequest)
+static BOOLEAN FspFuseOpCreate_FileOpenIf(FSP_FUSE_CONTEXT *Context)
 {
     PAGED_CODE();
 
     return FALSE;
 }
 
-static BOOLEAN FspFuseOpCreate_FileOverwriteIf(
-    FSP_FUSE_CONTEXT **PContext, FSP_FSCTL_TRANSACT_REQ *InternalRequest,
-    FSP_FUSE_PROTO_RSP *FuseResponse, FSP_FUSE_PROTO_REQ *FuseRequest)
+static BOOLEAN FspFuseOpCreate_FileOverwrite(FSP_FUSE_CONTEXT *Context)
 {
     PAGED_CODE();
 
     return FALSE;
 }
 
-static BOOLEAN FspFuseOpCreate_InvalidParameter(
-    FSP_FUSE_CONTEXT **PContext, FSP_FSCTL_TRANSACT_REQ *InternalRequest,
-    FSP_FUSE_PROTO_RSP *FuseResponse, FSP_FUSE_PROTO_REQ *FuseRequest)
+static BOOLEAN FspFuseOpCreate_FileOverwriteIf(FSP_FUSE_CONTEXT *Context)
 {
     PAGED_CODE();
 
     return FALSE;
 }
 
-BOOLEAN FspFuseOpCreate(
-    FSP_FUSE_CONTEXT **PContext, FSP_FSCTL_TRANSACT_REQ *InternalRequest,
-    FSP_FUSE_PROTO_RSP *FuseResponse, FSP_FUSE_PROTO_REQ *FuseRequest)
+static BOOLEAN FspFuseOpCreate_InvalidParameter(FSP_FUSE_CONTEXT *Context)
 {
     PAGED_CODE();
 
-    FSP_FUSE_CONTEXT *Context = *PContext;
+    return FALSE;
+}
 
-    if (FspFuseProcessFini == InternalRequest)
-    {
-        FspFree(Context);
-        return FALSE;
-    }
+BOOLEAN FspFuseOpCreate(FSP_FUSE_CONTEXT *Context)
+{
+    PAGED_CODE();
 
-    if (0 == Context)
-    {
-        Context = FspAlloc(sizeof *Context);
-        RtlZeroMemory(Context, sizeof *Context);
-        Context->InternalRequest = InternalRequest;
-        *PContext = Context;
-    }
+    if (Context->InternalRequest->Req.Create.OpenTargetDirectory)
+        return FspFuseOpCreate_FileOpenTargetDirectory(Context);
 
-    if (InternalRequest->Req.Create.OpenTargetDirectory)
-        return FspFuseOpCreate_FileOpenTargetDirectory(
-            PContext, InternalRequest, FuseResponse, FuseRequest);
-
-    switch ((InternalRequest->Req.Create.CreateOptions >> 24) & 0xff)
+    switch ((Context->InternalRequest->Req.Create.CreateOptions >> 24) & 0xff)
     {
     case FILE_CREATE:
-        return FspFuseOpCreate_FileCreate(
-            PContext, InternalRequest, FuseResponse, FuseRequest);
+        return FspFuseOpCreate_FileCreate(Context);
     case FILE_OPEN:
-        return FspFuseOpCreate_FileOpen(
-            PContext, InternalRequest, FuseResponse, FuseRequest);
+        return FspFuseOpCreate_FileOpen(Context);
     case FILE_OPEN_IF:
-        return FspFuseOpCreate_FileOpenIf(
-            PContext, InternalRequest, FuseResponse, FuseRequest);
+        return FspFuseOpCreate_FileOpenIf(Context);
     case FILE_OVERWRITE:
-        return FspFuseOpCreate_FileOverwrite(
-            PContext, InternalRequest, FuseResponse, FuseRequest);
+        return FspFuseOpCreate_FileOverwrite(Context);
     case FILE_OVERWRITE_IF:
     case FILE_SUPERSEDE:
-        return FspFuseOpCreate_FileOverwriteIf(
-            PContext, InternalRequest, FuseResponse, FuseRequest);
+        return FspFuseOpCreate_FileOverwriteIf(Context);
     default:
-        return FspFuseOpCreate_InvalidParameter(
-            PContext, InternalRequest, FuseResponse, FuseRequest);
+        return FspFuseOpCreate_InvalidParameter(Context);
     }
 }
 
-BOOLEAN FspFuseOpCleanup(
-    FSP_FUSE_CONTEXT **PContext, FSP_FSCTL_TRANSACT_REQ *InternalRequest,
-    FSP_FUSE_PROTO_RSP *FuseResponse, FSP_FUSE_PROTO_REQ *FuseRequest)
+BOOLEAN FspFuseOpCleanup(FSP_FUSE_CONTEXT *Context)
 {
     PAGED_CODE();
 
-    *PContext = FspFuseContextStatus(STATUS_INVALID_DEVICE_REQUEST);
     return FALSE;
 }
 
-BOOLEAN FspFuseOpClose(
-    FSP_FUSE_CONTEXT **PContext, FSP_FSCTL_TRANSACT_REQ *InternalRequest,
-    FSP_FUSE_PROTO_RSP *FuseResponse, FSP_FUSE_PROTO_REQ *FuseRequest)
+BOOLEAN FspFuseOpClose(FSP_FUSE_CONTEXT *Context)
 {
     PAGED_CODE();
 
-    *PContext = FspFuseContextStatus(STATUS_INVALID_DEVICE_REQUEST);
     return FALSE;
 }
 

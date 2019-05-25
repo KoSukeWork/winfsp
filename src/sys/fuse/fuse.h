@@ -36,24 +36,16 @@ NTSTATUS FspVolumeTransactFuse(
 
 /* FUSE processing context */
 typedef struct _FSP_FUSE_CONTEXT FSP_FUSE_CONTEXT;
-typedef BOOLEAN FSP_FUSE_PROCESS_DISPATCH(
-    FSP_FUSE_CONTEXT **PContext, FSP_FSCTL_TRANSACT_REQ *InternalRequest,
-    FSP_FUSE_PROTO_RSP *FuseResponse, FSP_FUSE_PROTO_REQ *FuseRequest);
-    /*
-     * Param:
-     *     *PContext == 0 && Request != 0: *PContext = new FSP_FUSE_CONTEXT(Request)
-     *     *PContext != 0 && Request != 0: process
-     *     *PContext != 0 && Request == 0: delete *PContext
-     * Return:
-     *     TRUE: continue processing
-     *     FALSE: stop processing
-     */
+typedef BOOLEAN FSP_FUSE_PROCESS_DISPATCH(FSP_FUSE_CONTEXT *Context);
 struct _FSP_FUSE_CONTEXT
 {
     FSP_FUSE_CONTEXT *DictNext;
     LIST_ENTRY ListEntry;
     FSP_FSCTL_TRANSACT_REQ *InternalRequest;
     FSP_FSCTL_TRANSACT_RSP *InternalResponse;
+    FSP_FSCTL_DECLSPEC_ALIGN UINT8 InternalResponseBuf[sizeof(FSP_FSCTL_TRANSACT_RSP)];
+    FSP_FUSE_PROTO_REQ *FuseRequest;
+    FSP_FUSE_PROTO_RSP *FuseResponse;
     INT CoroState[4];
     PSTR PosixPath, PosixPathRem;
     UINT64 Ino;

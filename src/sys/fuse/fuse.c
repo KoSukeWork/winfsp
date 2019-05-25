@@ -70,20 +70,58 @@ BOOLEAN FspFuseProcess(
 {
     PAGED_CODE();
 
-    if (FspFuseContextIsStatus(*PContext))
-        return FALSE;
+    FSP_FUSE_CONTEXT *Context = *PContext;
+    UINT32 Kind;
 
-    UINT32 Kind = 0 == *PContext ? InternalRequest->Kind : (*PContext)->InternalRequest->Kind;
+    if (0 == Context)
+    {
+        ASSERT(FspFuseProcessFini != InternalRequest && FspFuseProcessNorm != InternalRequest);
+        Kind = InternalRequest->Kind;
+    }
+    else if (FspFuseContextIsStatus(Context))
+        return FALSE;
+    else if (FspFuseProcessFini == InternalRequest)
+    {
+        /* delete context */
+        if ((PVOID)&Context->InternalResponseBuf != Context->InternalResponse)
+            FspFree(Context->InternalResponse);
+        if (0 != Context->PosixPath)
+            FspFree(Context->PosixPath);
+        FspFree(Context);
+
+        *PContext = 0;
+        return FALSE;
+    }
+    else
+        Kind = Context->InternalRequest->Kind;
 
     ASSERT(FspFsctlTransactKindCount > Kind);
-
-    if (0 != FspFuseProcessFunction[Kind])
-        return FspFuseProcessFunction[Kind](PContext, InternalRequest, FuseResponse, FuseRequest);
-    else
+    if (0 == FspFuseProcessFunction[Kind])
     {
         *PContext = FspFuseContextStatus(STATUS_INVALID_DEVICE_REQUEST);
         return FALSE;
     }
+
+    if (0 == Context)
+    {
+        /* create context */
+        Context = FspAlloc(sizeof *Context);
+        if (0 == Context)
+        {
+            *PContext = FspFuseContextStatus(STATUS_INSUFFICIENT_RESOURCES);
+            return FALSE;
+        }
+
+        RtlZeroMemory(Context, sizeof *Context);
+        Context->InternalRequest = InternalRequest;
+        Context->InternalResponse = (PVOID)&Context->InternalResponseBuf;
+        *PContext = Context;
+    }
+
+    Context->FuseRequest = FuseRequest;
+    Context->FuseResponse = FuseResponse;
+
+    return FspFuseProcessFunction[Kind](Context);
 }
 
 NTSTATUS FspVolumeTransactFuse(
@@ -160,30 +198,18 @@ request:
                 goto exit;
 
             Continue = FspFuseProcess(&Context, InternalRequest, 0, FuseRequest);
-
-            if (0 == Context)
-            {
-                /*
-                 * The corresponding IRP was moved to the Process state by
-                 * FspSendTransactInternalIrp. We could try completing the IRP,
-                 * but if we are in such a low-memory condition we likely cannot
-                 * do so easily.
-                 *
-                 * It is expected instead that the user mode file system should bring
-                 * down the file system and our I/O queue (thus canceling the IRP).
-                 */
-
-                Result = STATUS_INSUFFICIENT_RESOURCES;
-                goto exit;
-            }
-
-            InternalRequest = 0;
+            ASSERT(0 != Context);
+            if (!FspFuseContextIsStatus(Context))
+                InternalRequest = 0;
         }
         else
             Continue = FspFuseProcess(&Context, FspFuseProcessNorm, 0, FuseRequest);
 
         if (Continue)
+        {
+            ASSERT(!FspFuseContextIsStatus(Context));
             FspFuseIoqStartProcessing(FsvolDeviceExtension->FuseIoq, Context);
+        }
         else
         {
             if (FspFuseContextIsStatus(Context))
@@ -217,7 +243,9 @@ request:
 exit:
     if (0 != InternalRequest)
         FspFree(InternalRequest);
+
     FspDeviceDereference(FsvolDeviceObject);
+
     return Result;
 }
 
