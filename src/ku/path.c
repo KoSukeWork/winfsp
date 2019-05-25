@@ -1,5 +1,5 @@
 /**
- * @file dll/path.c
+ * @file ku/path.c
  *
  * @copyright 2015-2019 Bill Zissimopoulos
  */
@@ -19,7 +19,7 @@
  * associated repository.
  */
 
-#include <dll/library.h>
+#include <ku/library.h>
 
 FSP_API VOID FspPathPrefix(PWSTR Path, PWSTR *PPrefix, PWSTR *PRemain, PWSTR Root)
 {
@@ -42,7 +42,7 @@ FSP_API VOID FspPathPrefix(PWSTR Path, PWSTR *PPrefix, PWSTR *PRemain, PWSTR Roo
 
 FSP_API VOID FspPathSuffix(PWSTR Path, PWSTR *PRemain, PWSTR *PSuffix, PWSTR Root)
 {
-    PWSTR Pointer, RemainEnd, Suffix = 0;
+    PWSTR Pointer, RemainEnd = 0, Suffix = 0;
 
     for (Pointer = Path; *Pointer;)
         if (L'\\' == *Pointer)

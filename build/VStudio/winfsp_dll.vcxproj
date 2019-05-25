@@ -59,10 +59,10 @@
     <ClCompile Include="..\..\src\dll\library.c" />
     <ClCompile Include="..\..\src\dll\fs.c" />
     <ClCompile Include="..\..\src\dll\ntstatus.c" />
-    <ClCompile Include="..\..\src\dll\path.c" />
     <ClCompile Include="..\..\src\dll\service.c" />
     <ClCompile Include="..\..\src\dll\util.c" />
     <ClCompile Include="..\..\src\dll\wksid.c" />
+    <ClCompile Include="..\..\src\ku\path.c" />
     <ClCompile Include="..\..\src\ku\posix.c" />
   </ItemGroup>
   <ItemGroup>

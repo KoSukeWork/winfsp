@@ -97,9 +97,6 @@
     <ClCompile Include="..\..\src\dll\fsctl.c">
       <Filter>Source</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\dll\path.c">
-      <Filter>Source</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\src\dll\fsop.c">
       <Filter>Source</Filter>
     </ClCompile>
@@ -158,6 +155,9 @@
       <Filter>Source\fuse3</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\ku\posix.c">
+      <Filter>Source\ku</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\ku\path.c">
       <Filter>Source\ku</Filter>
     </ClCompile>
   </ItemGroup>
