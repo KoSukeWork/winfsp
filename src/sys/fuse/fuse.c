@@ -115,6 +115,9 @@ BOOLEAN FspFuseProcess(
         RtlZeroMemory(Context, sizeof *Context);
         Context->InternalRequest = InternalRequest;
         Context->InternalResponse = (PVOID)&Context->InternalResponseBuf;
+        Context->InternalResponse->Size = sizeof(FSP_FSCTL_TRANSACT_RSP);
+        Context->InternalResponse->Kind = InternalRequest->Kind;
+        Context->InternalResponse->Hint = InternalRequest->Hint;
         *PContext = Context;
     }
 

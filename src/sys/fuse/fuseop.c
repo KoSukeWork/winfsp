@@ -65,7 +65,6 @@ static VOID FspFuseLookupPath(FSP_FUSE_CONTEXT *Context)
         if (!NT_SUCCESS(Result))
         {
             Context->InternalResponse->IoStatus.Status = Result;
-            Context->InternalResponse->IoStatus.Information = 0;
             coro_exit;
         }
 
@@ -85,12 +84,7 @@ static VOID FspFuseLookupPath(FSP_FUSE_CONTEXT *Context)
             Context->PosixPathRem = P;
 
             if (Name == P)
-            {
-                /* !!!: REVISIT */
-                Context->InternalResponse->IoStatus.Status = STATUS_SUCCESS;
-                Context->InternalResponse->IoStatus.Information = 0;
                 coro_exit;
-            }
 
             Context->FuseRequest->len = (UINT32)(FSP_FUSE_PROTO_REQ_SIZE(req.lookup) + (P - Name) + 1);
             ASSERT(FSP_FUSE_PROTO_REQ_SIZEMIN >= Context->FuseRequest->len);
