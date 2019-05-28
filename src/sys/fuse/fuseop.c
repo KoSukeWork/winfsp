@@ -196,10 +196,10 @@ static VOID FspFuseLookupPath(FSP_FUSE_CONTEXT *Context)
             PSTR P, Name;
 
             P = Context->PosixPathRem;
-            while (L'\\' == *P)
+            while (L'/' == *P)
                 P++;
             Name = P;
-            while (*P && L'\\' != *P)
+            while (*P && L'/' != *P)
                 P++;
             Context->PosixPathRem = P;
 
