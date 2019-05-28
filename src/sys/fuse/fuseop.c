@@ -25,14 +25,14 @@
 #include <sys/fuse/fuse.h>
 
 static NTSTATUS FspFuseGetTokenUid(HANDLE Token, TOKEN_INFORMATION_CLASS InfoClass, PUINT32 PUid);
-static NTSTATUS FspFusePrepareContext(FSP_FUSE_CONTEXT *Context);
+static NTSTATUS FspFusePrepareContextNs(FSP_FUSE_CONTEXT *Context);
 static VOID FspFuseLookupPath(FSP_FUSE_CONTEXT *Context);
-static BOOLEAN FspFuseOpCreate_FileOpenTargetDirectory(FSP_FUSE_CONTEXT *Context);
 static BOOLEAN FspFuseOpCreate_FileCreate(FSP_FUSE_CONTEXT *Context);
 static BOOLEAN FspFuseOpCreate_FileOpen(FSP_FUSE_CONTEXT *Context);
 static BOOLEAN FspFuseOpCreate_FileOpenIf(FSP_FUSE_CONTEXT *Context);
 static BOOLEAN FspFuseOpCreate_FileOverwrite(FSP_FUSE_CONTEXT *Context);
 static BOOLEAN FspFuseOpCreate_FileOverwriteIf(FSP_FUSE_CONTEXT *Context);
+static BOOLEAN FspFuseOpCreate_FileOpenTargetDirectory(FSP_FUSE_CONTEXT *Context);
 static BOOLEAN FspFuseOpCreate_InvalidParameter(FSP_FUSE_CONTEXT *Context);
 BOOLEAN FspFuseOpCreate(FSP_FUSE_CONTEXT *Context);
 BOOLEAN FspFuseOpCleanup(FSP_FUSE_CONTEXT *Context);
@@ -40,14 +40,14 @@ BOOLEAN FspFuseOpClose(FSP_FUSE_CONTEXT *Context);
 
 #ifdef ALLOC_PRAGMA
 #pragma alloc_text(PAGE, FspFuseGetTokenUid)
-#pragma alloc_text(PAGE, FspFusePrepareContext)
+#pragma alloc_text(PAGE, FspFusePrepareContextNs)
 #pragma alloc_text(PAGE, FspFuseLookupPath)
-#pragma alloc_text(PAGE, FspFuseOpCreate_FileOpenTargetDirectory)
 #pragma alloc_text(PAGE, FspFuseOpCreate_FileCreate)
 #pragma alloc_text(PAGE, FspFuseOpCreate_FileOpen)
 #pragma alloc_text(PAGE, FspFuseOpCreate_FileOpenIf)
 #pragma alloc_text(PAGE, FspFuseOpCreate_FileOverwrite)
 #pragma alloc_text(PAGE, FspFuseOpCreate_FileOverwriteIf)
+#pragma alloc_text(PAGE, FspFuseOpCreate_FileOpenTargetDirectory)
 #pragma alloc_text(PAGE, FspFuseOpCreate_InvalidParameter)
 #pragma alloc_text(PAGE, FspFuseOpCreate)
 #pragma alloc_text(PAGE, FspFuseOpCleanup)
@@ -113,7 +113,7 @@ exit:
     return Result;
 }
 
-static NTSTATUS FspFusePrepareContext(FSP_FUSE_CONTEXT *Context)
+static NTSTATUS FspFusePrepareContextNs(FSP_FUSE_CONTEXT *Context)
 {
     PAGED_CODE();
 
@@ -229,13 +229,6 @@ static VOID FspFuseLookupPath(FSP_FUSE_CONTEXT *Context)
     }
 }
 
-static BOOLEAN FspFuseOpCreate_FileOpenTargetDirectory(FSP_FUSE_CONTEXT *Context)
-{
-    PAGED_CODE();
-
-    return FALSE;
-}
-
 static BOOLEAN FspFuseOpCreate_FileCreate(FSP_FUSE_CONTEXT *Context)
 {
     PAGED_CODE();
@@ -265,6 +258,13 @@ static BOOLEAN FspFuseOpCreate_FileOverwrite(FSP_FUSE_CONTEXT *Context)
 }
 
 static BOOLEAN FspFuseOpCreate_FileOverwriteIf(FSP_FUSE_CONTEXT *Context)
+{
+    PAGED_CODE();
+
+    return FALSE;
+}
+
+static BOOLEAN FspFuseOpCreate_FileOpenTargetDirectory(FSP_FUSE_CONTEXT *Context)
 {
     PAGED_CODE();
 

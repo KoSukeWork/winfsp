@@ -46,7 +46,7 @@ struct _FSP_FUSE_CONTEXT
     FSP_FSCTL_DECLSPEC_ALIGN UINT8 InternalResponseBuf[sizeof(FSP_FSCTL_TRANSACT_RSP)];
     FSP_FUSE_PROTO_REQ *FuseRequest;
     FSP_FUSE_PROTO_RSP *FuseResponse;
-    INT CoroState[4];
+    INT CoroState[8];
     PSTR PosixPath, PosixPathRem;
     UINT64 Ino;
     UINT32 Uid, Gid, Pid;
