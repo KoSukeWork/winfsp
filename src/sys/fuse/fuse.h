@@ -89,7 +89,7 @@ FSP_FUSE_CONTEXT *FspFuseIoqNextPending(FSP_FUSE_IOQ *Ioq); /* does not block! *
  * Nested coroutines
  *
  * This is a simple implementation of nested coroutines for C using macros. It introduces
- * the macros coro_block, coro_await, coro_yield and coro_exit that are used to create coroutines,
+ * the macros coro_block, coro_await, coro_yield and coro_break that are used to create coroutines,
  * suspend/resume them and exit them. This implementation supports nested coroutines in that
  * a coroutine may invoke another coroutine and the whole stack of coroutines may be suspended
  * and later resumed.
@@ -120,7 +120,7 @@ FSP_FUSE_CONTEXT *FspFuseIoqNextPending(FSP_FUSE_IOQ *Ioq); /* does not block! *
  *
  *     coro_block(S)
  *         This macro introduces a coroutine statement block { ... } where the "await", "yield",
- *         and "exit" statements can be used. There can only be one such block within a function.
+ *         and "break" statements can be used. There can only be one such block within a function.
  *     coro_await(E)
  *         This macro executes the expression E, which should be an invocation of a coroutine.
  *         The nested coroutine may suspend itself, in which case the "await" statement exits
@@ -131,19 +131,20 @@ FSP_FUSE_CONTEXT *FspFuseIoqNextPending(FSP_FUSE_IOQ *Ioq); /* does not block! *
  *         This macro exits the current coroutine statement block. The coroutine block can be
  *         reentered in which case execution will continue after the "yield" statement. It is
  *         an error to use "yield" outside of a coroutine block.
- *     coro_exit
+ *     coro_break
  *         This macro exits the current coroutine statement block and marks it as "complete".
- *         If the coroutine block is reentered it exits immediately. It is an error to use "exit"
+ *         If the coroutine block is reentered it exits immediately. It is an error to use "break"
  *         outside of a coroutine block.
  */
 #define coro_block(S)       int *coro_S__ = (S); if (0,0) coro_X__:; else switch (coro_enter__()) case 0:
-#define coro_await__(N, E)  do { E; coro_leave__(N); goto coro_X__; case N:; } while (coro_ndone__())
+#define coro_await__(N, E)  do { E; coro_leave__(N); goto coro_X__; case N:; } while (coro_await_done__)
+#define coro_await_done__   ((-1 != coro_below__) || ((coro_below__ = 0), 0))
 #define coro_yield__(N)     do { coro_below__ = 0; coro_leave__(N); goto coro_X__; case N:; } while (0,0)
-#define coro_exit           do { coro_below__ = 0; coro_leave__(-1); goto coro_X__; } while (0,0)
-#define coro_below__        coro_S__[coro_S__[0] + 1]
+#define coro_break          do { coro_below__ = 0; coro_leave__(-1); goto coro_X__; } while (0,0)
+#define coro_active()       (-1 != coro_below__)
+#define coro_below__        (coro_S__[coro_S__[0] + 1])
 #define coro_enter__()      (coro_S__[++coro_S__[0]])
 #define coro_leave__(N)     (coro_S__[coro_S__[0]--] = N)
-#define coro_ndone__()      ((-1 != coro_below__) || ((coro_below__ = 0), 0))
 #if defined(__COUNTER__)
 #define coro_await(...)     coro_await__((__COUNTER__ + 1), (__VA_ARGS__))
 #define coro_yield          coro_yield__((__COUNTER__ + 1))
