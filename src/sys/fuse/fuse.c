@@ -39,31 +39,6 @@ VOID FspFuseInitialize(VOID);
 
 static FSP_FUSE_PROCESS_DISPATCH *FspFuseProcessFunction[FspFsctlTransactKindCount];
 
-VOID FspFuseInitialize(VOID)
-{
-    FspFuseProcessFunction[FspFsctlTransactCreateKind] = FspFuseOpCreate;
-    //FspFuseProcessFunction[FspFsctlTransactOverwriteKind] = FspFuseOpOverwrite;
-    FspFuseProcessFunction[FspFsctlTransactCleanupKind] = FspFuseOpCleanup;
-    FspFuseProcessFunction[FspFsctlTransactCloseKind] = FspFuseOpClose;
-    //FspFuseProcessFunction[FspFsctlTransactReadKind] = FspFuseOpRead;
-    //FspFuseProcessFunction[FspFsctlTransactWriteKind] = FspFuseOpWrite;
-    //FspFuseProcessFunction[FspFsctlTransactQueryInformationKind] = FspFuseOpQueryInformation;
-    //FspFuseProcessFunction[FspFsctlTransactSetInformationKind] = FspFuseOpSetInformation;
-    //FspFuseProcessFunction[FspFsctlTransactQueryEaKind] = FspFuseOpQueryEa;
-    //FspFuseProcessFunction[FspFsctlTransactSetEaKind] = FspFuseOpSetEa;
-    //FspFuseProcessFunction[FspFsctlTransactFlushBuffersKind] = FspFuseOpFlushBuffers;
-    //FspFuseProcessFunction[FspFsctlTransactQueryVolumeInformationKind] = FspFuseOpQueryVolumeInformation;
-    //FspFuseProcessFunction[FspFsctlTransactSetVolumeInformationKind] = FspFuseOpSetVolumeInformation;
-    //FspFuseProcessFunction[FspFsctlTransactQueryDirectoryKind] = FspFuseOpQueryDirectory;
-    //FspFuseProcessFunction[FspFsctlTransactFileSystemControlKind] = FspFuseOpFileSystemControl;
-    //FspFuseProcessFunction[FspFsctlTransactDeviceControlKind] = FspFuseOpDeviceControl;
-    //FspFuseProcessFunction[FspFsctlTransactShutdownKind] = FspFuseOpShutdown;
-    //FspFuseProcessFunction[FspFsctlTransactLockControlKind] = FspFuseOpLockControl;
-    //FspFuseProcessFunction[FspFsctlTransactQuerySecurityKind] = FspFuseOpQuerySecurity;
-    //FspFuseProcessFunction[FspFsctlTransactSetSecurityKind] = FspFuseOpSetSecurity;
-    //FspFuseProcessFunction[FspFsctlTransactQueryStreamInformationKind] = FspFuseOpQueryStreamInformation;
-}
-
 BOOLEAN FspFuseProcess(
     FSP_FUSE_CONTEXT **PContext, FSP_FSCTL_TRANSACT_REQ *InternalRequest,
     FSP_FUSE_PROTO_RSP *FuseResponse, FSP_FUSE_PROTO_REQ *FuseRequest)
@@ -250,6 +225,31 @@ exit:
     FspDeviceDereference(FsvolDeviceObject);
 
     return Result;
+}
+
+VOID FspFuseInitialize(VOID)
+{
+    FspFuseProcessFunction[FspFsctlTransactCreateKind] = FspFuseOpCreate;
+    //FspFuseProcessFunction[FspFsctlTransactOverwriteKind] = FspFuseOpOverwrite;
+    FspFuseProcessFunction[FspFsctlTransactCleanupKind] = FspFuseOpCleanup;
+    FspFuseProcessFunction[FspFsctlTransactCloseKind] = FspFuseOpClose;
+    //FspFuseProcessFunction[FspFsctlTransactReadKind] = FspFuseOpRead;
+    //FspFuseProcessFunction[FspFsctlTransactWriteKind] = FspFuseOpWrite;
+    //FspFuseProcessFunction[FspFsctlTransactQueryInformationKind] = FspFuseOpQueryInformation;
+    //FspFuseProcessFunction[FspFsctlTransactSetInformationKind] = FspFuseOpSetInformation;
+    //FspFuseProcessFunction[FspFsctlTransactQueryEaKind] = FspFuseOpQueryEa;
+    //FspFuseProcessFunction[FspFsctlTransactSetEaKind] = FspFuseOpSetEa;
+    //FspFuseProcessFunction[FspFsctlTransactFlushBuffersKind] = FspFuseOpFlushBuffers;
+    //FspFuseProcessFunction[FspFsctlTransactQueryVolumeInformationKind] = FspFuseOpQueryVolumeInformation;
+    //FspFuseProcessFunction[FspFsctlTransactSetVolumeInformationKind] = FspFuseOpSetVolumeInformation;
+    //FspFuseProcessFunction[FspFsctlTransactQueryDirectoryKind] = FspFuseOpQueryDirectory;
+    //FspFuseProcessFunction[FspFsctlTransactFileSystemControlKind] = FspFuseOpFileSystemControl;
+    //FspFuseProcessFunction[FspFsctlTransactDeviceControlKind] = FspFuseOpDeviceControl;
+    //FspFuseProcessFunction[FspFsctlTransactShutdownKind] = FspFuseOpShutdown;
+    //FspFuseProcessFunction[FspFsctlTransactLockControlKind] = FspFuseOpLockControl;
+    //FspFuseProcessFunction[FspFsctlTransactQuerySecurityKind] = FspFuseOpQuerySecurity;
+    //FspFuseProcessFunction[FspFsctlTransactSetSecurityKind] = FspFuseOpSetSecurity;
+    //FspFuseProcessFunction[FspFsctlTransactQueryStreamInformationKind] = FspFuseOpQueryStreamInformation;
 }
 
 #endif
