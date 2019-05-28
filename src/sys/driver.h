@@ -1642,6 +1642,14 @@ NTSTATUS FspPosixMapWindowsToPosixPathEx(PWSTR WindowsPath, char **PPosixPath,
     BOOLEAN Translate);
 NTSTATUS FspPosixMapPosixToWindowsPathEx(const char *PosixPath, PWSTR *PWindowsPath,
     BOOLEAN Translate);
+VOID FspPosixDeletePath(void *Path);
+VOID FspPosixEncodeWindowsPath(PWSTR WindowsPath, ULONG Size);
+VOID FspPosixDecodeWindowsPath(PWSTR WindowsPath, ULONG Size);
+
+/* path handling */
+VOID FspPathPrefix(PWSTR Path, PWSTR *PPrefix, PWSTR *PRemain, PWSTR Root);
+VOID FspPathSuffix(PWSTR Path, PWSTR *PRemain, PWSTR *PSuffix, PWSTR Root);
+VOID FspPathCombine(PWSTR Prefix, PWSTR Suffix);
 
 /* multiversion support */
 typedef

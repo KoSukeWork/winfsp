@@ -86,7 +86,7 @@ BOOLEAN FspFuseProcess(
         if ((PVOID)&Context->InternalResponseBuf != Context->InternalResponse)
             FspFree(Context->InternalResponse);
         if (0 != Context->PosixPath)
-            FspFree(Context->PosixPath);
+            FspPosixDeletePath(Context->PosixPath);
         FspFree(Context);
 
         *PContext = 0;

@@ -49,6 +49,7 @@ struct _FSP_FUSE_CONTEXT
     INT CoroState[4];
     PSTR PosixPath, PosixPathRem;
     UINT64 Ino;
+    UINT32 Uid, Gid, Pid;
 };
 BOOLEAN FspFuseProcess(
     FSP_FUSE_CONTEXT **PContext, FSP_FSCTL_TRANSACT_REQ *InternalRequest,

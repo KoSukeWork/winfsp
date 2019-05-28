@@ -24,6 +24,8 @@
 #if defined(WINFSP_SYS_FUSE)
 #include <sys/fuse/fuse.h>
 
+static NTSTATUS FspFuseGetTokenUid(HANDLE Token, TOKEN_INFORMATION_CLASS InfoClass, PUINT32 PUid);
+static NTSTATUS FspFusePrepareContext(FSP_FUSE_CONTEXT *Context);
 static VOID FspFuseLookupPath(FSP_FUSE_CONTEXT *Context);
 static BOOLEAN FspFuseOpCreate_FileOpenTargetDirectory(FSP_FUSE_CONTEXT *Context);
 static BOOLEAN FspFuseOpCreate_FileCreate(FSP_FUSE_CONTEXT *Context);
@@ -37,6 +39,8 @@ BOOLEAN FspFuseOpCleanup(FSP_FUSE_CONTEXT *Context);
 BOOLEAN FspFuseOpClose(FSP_FUSE_CONTEXT *Context);
 
 #ifdef ALLOC_PRAGMA
+#pragma alloc_text(PAGE, FspFuseGetTokenUid)
+#pragma alloc_text(PAGE, FspFusePrepareContext)
 #pragma alloc_text(PAGE, FspFuseLookupPath)
 #pragma alloc_text(PAGE, FspFuseOpCreate_FileOpenTargetDirectory)
 #pragma alloc_text(PAGE, FspFuseOpCreate_FileCreate)
@@ -50,24 +54,142 @@ BOOLEAN FspFuseOpClose(FSP_FUSE_CONTEXT *Context);
 #pragma alloc_text(PAGE, FspFuseOpClose)
 #endif
 
+static NTSTATUS FspFuseGetTokenUid(HANDLE Token, TOKEN_INFORMATION_CLASS InfoClass, PUINT32 PUid)
+{
+    PAGED_CODE();
+
+    PSID Sid;
+    union
+    {
+        TOKEN_USER U;
+        TOKEN_OWNER O;
+        TOKEN_PRIMARY_GROUP G;
+        UINT8 B[128];
+    } InfoBuf;
+    PVOID Info = &InfoBuf;
+    ULONG Size;
+    NTSTATUS Result;
+
+    switch (InfoClass)
+    {
+    case TokenUser:
+        Sid = ((PTOKEN_USER)Info)->User.Sid;
+        break;
+    case TokenOwner:
+        Sid = ((PTOKEN_OWNER)Info)->Owner;
+        break;
+    case TokenPrimaryGroup:
+        Sid = ((PTOKEN_PRIMARY_GROUP)Info)->PrimaryGroup;
+        break;
+    default:
+        ASSERT(0);
+        return STATUS_INVALID_PARAMETER;
+    }
+
+    Result = ZwQueryInformationToken(Token, InfoClass, Info, sizeof InfoBuf, &Size);
+    if (!NT_SUCCESS(Result))
+    {
+        if (STATUS_BUFFER_TOO_SMALL != Result)
+            goto exit;
+
+        Info = FspAlloc(Size);
+        if (0 == Info)
+        {
+            Result = STATUS_INSUFFICIENT_RESOURCES;
+            goto exit;
+        }
+
+        Result = ZwQueryInformationToken(Token, InfoClass, Info, Size, &Size);
+        if (!NT_SUCCESS(Result))
+            goto exit;
+    }
+
+    Result = FspPosixMapSidToUid(Sid, PUid);
+
+exit:
+    if (Info != &InfoBuf)
+        FspFree(Info);
+
+    return Result;
+}
+
+static NTSTATUS FspFusePrepareContext(FSP_FUSE_CONTEXT *Context)
+{
+    PAGED_CODE();
+
+    FSP_FSCTL_TRANSACT_REQ *InternalRequest = Context->InternalRequest;
+    UINT32 Uid = (UINT32)-1, Gid = (UINT32)-1, Pid = (UINT32)-1;
+    PSTR PosixPath = 0;
+    PWSTR FileName = 0, Suffix;
+    WCHAR Root[2] = L"\\";
+    UINT64 AccessToken = 0;
+    NTSTATUS Result;
+
+    if (FspFsctlTransactCreateKind == InternalRequest->Kind)
+    {
+        if (InternalRequest->Req.Create.OpenTargetDirectory)
+            FspPathSuffix((PWSTR)InternalRequest->Buffer, &FileName, &Suffix, Root);
+        else
+            FileName = (PWSTR)InternalRequest->Buffer;
+        AccessToken = InternalRequest->Req.Create.AccessToken;
+    }
+    else if (FspFsctlTransactSetInformationKind == InternalRequest->Kind &&
+        FileRenameInformation == InternalRequest->Req.SetInformation.FileInformationClass)
+    {
+        FileName = (PWSTR)(InternalRequest->Buffer +
+            InternalRequest->Req.SetInformation.Info.Rename.NewFileName.Offset);
+        AccessToken = InternalRequest->Req.SetInformation.Info.Rename.AccessToken;
+    }
+
+    if (0 != FileName)
+    {
+        Result = FspPosixMapWindowsToPosixPathEx(FileName, &PosixPath, TRUE);
+        if (FspFsctlTransactCreateKind == InternalRequest->Kind &&
+            InternalRequest->Req.Create.OpenTargetDirectory)
+            FspPathCombine((PWSTR)InternalRequest->Buffer, Suffix);
+        if (!NT_SUCCESS(Result))
+            goto exit;
+    }
+
+    if (0 != AccessToken)
+    {
+        Result = FspFuseGetTokenUid(
+            FSP_FSCTL_TRANSACT_REQ_TOKEN_HANDLE(AccessToken),
+            TokenUser,
+            &Uid);
+        if (!NT_SUCCESS(Result))
+            goto exit;
+
+        Result = FspFuseGetTokenUid(
+            FSP_FSCTL_TRANSACT_REQ_TOKEN_HANDLE(AccessToken),
+            TokenPrimaryGroup,
+            &Gid);
+        if (!NT_SUCCESS(Result))
+            goto exit;
+
+        Pid = FSP_FSCTL_TRANSACT_REQ_TOKEN_PID(AccessToken);
+    }
+
+    Context->PosixPath = PosixPath;
+    Context->Uid = Uid;
+    Context->Gid = Gid;
+    Context->Pid = Pid; /* !!!: what about Cygwin? */
+
+    Result = STATUS_SUCCESS;
+
+exit:
+    if (!NT_SUCCESS(Result) && 0 != PosixPath)
+        FspPosixDeletePath(PosixPath);
+
+    return Result;
+}
+
 static VOID FspFuseLookupPath(FSP_FUSE_CONTEXT *Context)
 {
     PAGED_CODE();
 
     coro_block (Context->CoroState)
     {
-        NTSTATUS Result;
-
-        Result = FspPosixMapWindowsToPosixPathEx(
-            (PWSTR)Context->InternalRequest->Buffer,
-            &Context->PosixPath,
-            TRUE);
-        if (!NT_SUCCESS(Result))
-        {
-            Context->InternalResponse->IoStatus.Status = Result;
-            coro_exit;
-        }
-
         Context->PosixPathRem = Context->PosixPath;
         Context->Ino = FSP_FUSE_PROTO_ROOT_ID;
 
@@ -91,9 +213,9 @@ static VOID FspFuseLookupPath(FSP_FUSE_CONTEXT *Context)
             Context->FuseRequest->opcode = FSP_FUSE_PROTO_OPCODE_LOOKUP;
             Context->FuseRequest->unique = (UINT64)(UINT_PTR)Context;
             Context->FuseRequest->nodeid = Context->Ino;
-            Context->FuseRequest->uid = 0; // !!!: REVISIT
-            Context->FuseRequest->gid = 0; // !!!: REVISIT
-            Context->FuseRequest->pid = 0; // !!!: REVISIT
+            Context->FuseRequest->uid = Context->Uid;
+            Context->FuseRequest->gid = Context->Gid;
+            Context->FuseRequest->pid = Context->Pid;
             RtlCopyMemory(Context->FuseRequest->req.lookup.name, Name, P - Name);
             Context->FuseRequest->req.lookup.name[P - Name] = '\0';
 
