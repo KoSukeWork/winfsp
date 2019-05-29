@@ -142,6 +142,9 @@
     <ClInclude Include="..\..\src\ku\library.h">
       <Filter>Source\ku</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\sys\fuse\coro.h">
+      <Filter>Source\fuse</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="..\..\src\sys\version.rc">

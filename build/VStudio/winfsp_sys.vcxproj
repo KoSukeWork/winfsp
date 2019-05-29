@@ -195,6 +195,7 @@
     <ClInclude Include="..\..\inc\winfsp\fsctl.h" />
     <ClInclude Include="..\..\src\ku\library.h" />
     <ClInclude Include="..\..\src\sys\driver.h" />
+    <ClInclude Include="..\..\src\sys\fuse\coro.h" />
     <ClInclude Include="..\..\src\sys\fuse\fuse.h" />
     <ClInclude Include="..\..\src\sys\fuse\proto.h" />
   </ItemGroup>
