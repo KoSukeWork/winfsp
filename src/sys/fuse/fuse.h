@@ -44,12 +44,13 @@ struct _FSP_FUSE_CONTEXT
     FSP_FSCTL_TRANSACT_REQ *InternalRequest;
     FSP_FSCTL_TRANSACT_RSP *InternalResponse;
     FSP_FSCTL_DECLSPEC_ALIGN UINT8 InternalResponseBuf[sizeof(FSP_FSCTL_TRANSACT_RSP)];
+    UINT32 OrigUid, OrigGid, OrigPid;
     FSP_FUSE_PROTO_REQ *FuseRequest;
     FSP_FUSE_PROTO_RSP *FuseResponse;
     INT CoroState[8];
-    PSTR PosixPath, PosixPathRem;
+    PSTR PosixPath, PosixPathRem, PosixName;
     UINT64 Ino;
-    UINT32 Uid, Gid, Pid;
+    UINT32 Uid, Gid, Mode;
 };
 BOOLEAN FspFuseProcess(
     FSP_FUSE_CONTEXT **PContext, FSP_FSCTL_TRANSACT_REQ *InternalRequest,
@@ -137,8 +138,8 @@ FSP_FUSE_CONTEXT *FspFuseIoqNextPending(FSP_FUSE_IOQ *Ioq); /* does not block! *
  *         outside of a coroutine block.
  */
 #define coro_block(S)       int *coro_S__ = (S); if (0,0) coro_X__:; else switch (coro_enter__()) case 0:
-#define coro_await__(N, E)  do { E; coro_leave__(N); goto coro_X__; case N:; } while (coro_await_done__)
-#define coro_await_done__   ((-1 != coro_below__) || ((coro_below__ = 0), 0))
+#define coro_await__(N, E)  do { E; coro_await_break__; coro_leave__(N); goto coro_X__; case N:; } while (1,1)
+#define coro_await_break__  if (-1 == coro_below__) { coro_below__ = 0; break; }
 #define coro_yield__(N)     do { coro_below__ = 0; coro_leave__(N); goto coro_X__; case N:; } while (0,0)
 #define coro_break          do { coro_below__ = 0; coro_leave__(-1); goto coro_X__; } while (0,0)
 #define coro_active()       (-1 != coro_below__)

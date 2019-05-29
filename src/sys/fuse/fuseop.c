@@ -26,6 +26,7 @@
 
 static NTSTATUS FspFuseGetTokenUid(HANDLE Token, TOKEN_INFORMATION_CLASS InfoClass, PUINT32 PUid);
 static NTSTATUS FspFusePrepareContextNs(FSP_FUSE_CONTEXT *Context);
+static VOID FspFuseLookup(FSP_FUSE_CONTEXT *Context);
 static VOID FspFuseLookupPath(FSP_FUSE_CONTEXT *Context);
 static VOID FspFuseOpCreate_FileCreate(FSP_FUSE_CONTEXT *Context);
 static VOID FspFuseOpCreate_FileOpen(FSP_FUSE_CONTEXT *Context);
@@ -40,6 +41,7 @@ BOOLEAN FspFuseOpClose(FSP_FUSE_CONTEXT *Context);
 #ifdef ALLOC_PRAGMA
 #pragma alloc_text(PAGE, FspFuseGetTokenUid)
 #pragma alloc_text(PAGE, FspFusePrepareContextNs)
+#pragma alloc_text(PAGE, FspFuseLookup)
 #pragma alloc_text(PAGE, FspFuseLookupPath)
 #pragma alloc_text(PAGE, FspFuseOpCreate_FileCreate)
 #pragma alloc_text(PAGE, FspFuseOpCreate_FileOpen)
@@ -169,9 +171,9 @@ static NTSTATUS FspFusePrepareContextNs(FSP_FUSE_CONTEXT *Context)
     }
 
     Context->PosixPath = PosixPath;
-    Context->Uid = Uid;
-    Context->Gid = Gid;
-    Context->Pid = Pid; /* !!!: what about Cygwin? */
+    Context->OrigUid = Uid;
+    Context->OrigGid = Gid;
+    Context->OrigPid = Pid; /* !!!: what about Cygwin? */
 
     Result = STATUS_SUCCESS;
 
@@ -182,47 +184,107 @@ exit:
     return Result;
 }
 
-static VOID FspFuseLookupPath(FSP_FUSE_CONTEXT *Context)
+static VOID FspFuseLookup(FSP_FUSE_CONTEXT *Context)
 {
     PAGED_CODE();
 
     coro_block (Context->CoroState)
     {
-        Context->PosixPathRem = Context->PosixPath;
+        Context->FuseRequest->len = (UINT32)(FSP_FUSE_PROTO_REQ_SIZE(req.lookup) +
+            (Context->PosixPathRem - Context->PosixName) + 1);
+        ASSERT(FSP_FUSE_PROTO_REQ_SIZEMIN >= Context->FuseRequest->len);
+        Context->FuseRequest->opcode = FSP_FUSE_PROTO_OPCODE_LOOKUP;
+        Context->FuseRequest->unique = (UINT64)(UINT_PTR)Context;
+        Context->FuseRequest->nodeid = Context->Ino;
+        Context->FuseRequest->uid = Context->OrigUid;
+        Context->FuseRequest->gid = Context->OrigGid;
+        Context->FuseRequest->pid = Context->OrigPid;
+        RtlCopyMemory(Context->FuseRequest->req.lookup.name, Context->PosixName,
+            Context->PosixPathRem - Context->PosixName);
+        Context->FuseRequest->req.lookup.name[Context->PosixPathRem - Context->PosixName] = '\0';
+        coro_yield;
+
+        if (0 != Context->FuseResponse->error)
+            coro_break;
+
+        Context->Ino = Context->FuseResponse->rsp.lookup.entry.nodeid;
+        Context->Uid = Context->FuseResponse->rsp.lookup.entry.attr.uid;
+        Context->Gid = Context->FuseResponse->rsp.lookup.entry.attr.gid;
+        Context->Mode = Context->FuseResponse->rsp.lookup.entry.attr.mode;
+        coro_break;
+    }
+}
+
+static VOID FspFuseLookupPath(FSP_FUSE_CONTEXT *Context)
+{
+    PAGED_CODE();
+
+    PSTR P, PosixName;
+
+    coro_block (Context->CoroState)
+    {
+        P = Context->PosixPath;
+        while ('/' == *P)
+            P++;
+        Context->PosixPathRem = Context->PosixName = P;
         Context->Ino = FSP_FUSE_PROTO_ROOT_ID;
 
         for (;;)
         {
-            PSTR P, Name;
+            /*
+             * - RootName:
+             *     - UserMode:
+             *         - !LastName && TravPriv:
+             *             - Lookup
+             *             - TraverseCheck
+             *         - LastName:
+             *             - Lookup
+             *             - AccessCheck
+             * - !RootName:
+             *     - Lookup
+             *     - UserMode:
+             *         - !LastName && TravPriv:
+             *             - TraverseCheck
+             *         - LastName:
+             *             - AccessCheck
+             */
+#define RootName                        (Context->PosixName == Context->PosixPathRem)
+#define LastName                        ('\0' == *Context->PosixPathRem)
+#define UserMode                        (Context->InternalRequest->Req.Create.UserMode)
+#define TravPriv                        (Context->InternalRequest->Req.Create.HasTraversePrivilege)
+            if (!RootName || (UserMode && (TravPriv || LastName)))
+            {
+                coro_await (FspFuseLookup(Context));
+                if (0 != Context->FuseResponse->error)
+                    coro_break;
+
+                if (UserMode)
+                {
+                    if (!LastName && TravPriv)
+                    {
+                        // !!!: traverse check
+                    }
+                    else if (LastName)
+                    {
+                        // !!!: access check
+                    }
+                }
+            }
+#undef TravPriv
+#undef UserMode
+#undef LastName
+#undef RootName
 
             P = Context->PosixPathRem;
-            while (L'/' == *P)
+            while ('/' == *P)
                 P++;
-            Name = P;
-            while (*P && L'/' != *P)
+            PosixName = P;
+            while ('\0' != *P && '/' != *P)
                 P++;
             Context->PosixPathRem = P;
-
-            if (Name == P)
+            if (PosixName == P)
                 coro_break;
-
-            Context->FuseRequest->len = (UINT32)(FSP_FUSE_PROTO_REQ_SIZE(req.lookup) + (P - Name) + 1);
-            ASSERT(FSP_FUSE_PROTO_REQ_SIZEMIN >= Context->FuseRequest->len);
-            Context->FuseRequest->opcode = FSP_FUSE_PROTO_OPCODE_LOOKUP;
-            Context->FuseRequest->unique = (UINT64)(UINT_PTR)Context;
-            Context->FuseRequest->nodeid = Context->Ino;
-            Context->FuseRequest->uid = Context->Uid;
-            Context->FuseRequest->gid = Context->Gid;
-            Context->FuseRequest->pid = Context->Pid;
-            RtlCopyMemory(Context->FuseRequest->req.lookup.name, Name, P - Name);
-            Context->FuseRequest->req.lookup.name[P - Name] = '\0';
-
-            coro_yield;
-
-            Context->Ino = Context->FuseResponse->rsp.lookup.entry.nodeid;
-            // !!!: REVISIT: access control
-
-            coro_yield;
+            Context->PosixName = PosixName;
         }
     }
 }
