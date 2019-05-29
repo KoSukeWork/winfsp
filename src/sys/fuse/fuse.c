@@ -24,6 +24,7 @@
 #if defined(WINFSP_SYS_FUSE)
 #include <sys/fuse/fuse.h>
 
+NTSTATUS FspFuseNtStatusFromErrno(INT32 Errno);
 BOOLEAN FspFuseProcess(
     FSP_FUSE_CONTEXT **PContext, FSP_FSCTL_TRANSACT_REQ *InternalRequest,
     FSP_FUSE_PROTO_RSP *FuseResponse, FSP_FUSE_PROTO_REQ *FuseRequest);
@@ -32,10 +33,25 @@ NTSTATUS FspVolumeTransactFuse(
 VOID FspFuseInitialize(VOID);
 
 #ifdef ALLOC_PRAGMA
+#pragma alloc_text(PAGE, FspFuseNtStatusFromErrno)
 #pragma alloc_text(PAGE, FspFuseProcess)
 #pragma alloc_text(PAGE, FspVolumeTransactFuse)
 #pragma alloc_text(INIT, FspFuseInitialize)
 #endif
+
+NTSTATUS FspFuseNtStatusFromErrno(INT32 Errno)
+{
+    PAGED_CODE();
+
+    switch (Errno)
+    {
+    #undef FSP_FUSE_ERRNO
+    #define FSP_FUSE_ERRNO 87
+    #include <ku/fuse-errno.i>
+    default:
+        return STATUS_ACCESS_DENIED;
+    }
+}
 
 static FSP_FUSE_PROCESS_DISPATCH *FspFuseProcessFunction[FspFsctlTransactKindCount];
 

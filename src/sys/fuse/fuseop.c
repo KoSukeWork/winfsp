@@ -205,7 +205,11 @@ static VOID FspFuseLookup(FSP_FUSE_CONTEXT *Context)
         coro_yield;
 
         if (0 != Context->FuseResponse->error)
+        {
+            Context->InternalResponse->IoStatus.Status =
+                FspFuseNtStatusFromErrno(Context->FuseResponse->error);
             coro_break;
+        }
 
         Context->Ino = Context->FuseResponse->rsp.lookup.entry.nodeid;
         Context->Uid = Context->FuseResponse->rsp.lookup.entry.attr.uid;
@@ -255,7 +259,7 @@ static VOID FspFuseLookupPath(FSP_FUSE_CONTEXT *Context)
             if (!RootName || (UserMode && (TravPriv || LastName)))
             {
                 coro_await (FspFuseLookup(Context));
-                if (0 != Context->FuseResponse->error)
+                if (!NT_SUCCESS(Context->InternalResponse->IoStatus.Status))
                     coro_break;
 
                 if (UserMode)

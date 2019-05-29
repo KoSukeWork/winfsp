@@ -555,7 +555,7 @@ FSP_FUSE_API int32_t fsp_fuse_ntstatus_from_errno(struct fsp_fuse_env *env,
         {
         #undef FSP_FUSE_ERRNO
         #define FSP_FUSE_ERRNO 67
-        #include "errno.i"
+        #include <ku/fuse-errno.i>
         default:
             return STATUS_ACCESS_DENIED;
         }
@@ -564,7 +564,7 @@ FSP_FUSE_API int32_t fsp_fuse_ntstatus_from_errno(struct fsp_fuse_env *env,
         {
         #undef FSP_FUSE_ERRNO
         #define FSP_FUSE_ERRNO 87
-        #include "errno.i"
+        #include <ku/fuse-errno.i>
         default:
             return STATUS_ACCESS_DENIED;
         }

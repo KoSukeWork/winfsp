@@ -86,6 +86,9 @@ FSP_FUSE_CONTEXT *FspFuseIoqEndProcessing(FSP_FUSE_IOQ *Ioq, UINT64 Unique);
 VOID FspFuseIoqPostPending(FSP_FUSE_IOQ *Ioq, FSP_FUSE_CONTEXT *Context);
 FSP_FUSE_CONTEXT *FspFuseIoqNextPending(FSP_FUSE_IOQ *Ioq); /* does not block! */
 
+/* utility */
+NTSTATUS FspFuseNtStatusFromErrno(INT32 Errno);
+
 /*
  * Nested coroutines
  *
