@@ -24,6 +24,10 @@
 #if defined(WINFSP_SYS_FUSE)
 #include <sys/fuse/fuse.h>
 
+static NTSTATUS FspFuseAccessCheck(
+    UINT32 FileUid, UINT32 FileGid, UINT32 FileMode,
+    UINT32 OrigUid, UINT32 OrigGid, UINT32 DesiredAccess,
+    PUINT32 PGrantedAccess);
 static NTSTATUS FspFuseGetTokenUid(HANDLE Token, TOKEN_INFORMATION_CLASS InfoClass, PUINT32 PUid);
 static NTSTATUS FspFusePrepareContextNs(FSP_FUSE_CONTEXT *Context);
 static VOID FspFuseLookup(FSP_FUSE_CONTEXT *Context);
@@ -39,6 +43,7 @@ BOOLEAN FspFuseOpCleanup(FSP_FUSE_CONTEXT *Context);
 BOOLEAN FspFuseOpClose(FSP_FUSE_CONTEXT *Context);
 
 #ifdef ALLOC_PRAGMA
+#pragma alloc_text(PAGE, FspFuseAccessCheck)
 #pragma alloc_text(PAGE, FspFuseGetTokenUid)
 #pragma alloc_text(PAGE, FspFusePrepareContextNs)
 #pragma alloc_text(PAGE, FspFuseLookup)
@@ -53,6 +58,114 @@ BOOLEAN FspFuseOpClose(FSP_FUSE_CONTEXT *Context);
 #pragma alloc_text(PAGE, FspFuseOpCleanup)
 #pragma alloc_text(PAGE, FspFuseOpClose)
 #endif
+
+/*
+ * Code borrowed from ku/posix.c - begin
+ */
+
+/* [PERMS]
+ * By default, all access-allowed ACEs will contain the following Windows access rights.
+ */
+#define FspPosixDefaultPerm             \
+    (SYNCHRONIZE | READ_CONTROL | FILE_READ_ATTRIBUTES | FILE_READ_EA)
+/* [PERMS]
+ * There are some additional Windows access rights that are always set in the
+ * access-allowed ACE for the file's owner.
+ */
+#define FspPosixOwnerDefaultPerm        \
+    (FspPosixDefaultPerm | DELETE | WRITE_DAC | WRITE_OWNER | FILE_WRITE_ATTRIBUTES | FILE_WRITE_EA)
+
+static inline ACCESS_MASK FspPosixMapPermissionToAccessMask(UINT32 Mode, UINT32 Perm)
+{
+    /*
+     * We use only the 0040000 (directory) and 0001000 (sticky) bits from Mode.
+     * If this is a directory and it does not have the sticky bit set (and the
+     * write permission is enabled) we add FILE_DELETE_CHILD access.
+     *
+     * When calling this function for computing the Owner access mask, we always
+     * pass Mode & ~0001000 to remove the sticky bit and thus add FILE_DELETE_CHILD
+     * access if it is a directory. For Group and World permissions we do not
+     * remove the sticky bit as we do not want FILE_DELETE_CHILD access in these
+     * cases.
+     */
+
+    ACCESS_MASK DeleteChild = 0040000 == (Mode & 0041000) ? FILE_DELETE_CHILD : 0;
+
+    /* [PERMS]
+     * Additionally, if the UNIX read permission bit is set, then the Windows
+     * File_Read access right is added to the ACE. When enabled on directories,
+     * this allows them to be searched. When enabled on files, it allows the data
+     * to be viewed. If the UNIX execute permission bit is set, then the Windows
+     * File_Execute access right is added to the ACE. On directories this enables
+     * the directory to be traversed. On files it allows the file to be executed.
+     *
+     * If the UNIX write permission bit is set then the following Windows access
+     * rights are added: Write_Data, Write_Attributes, Append_Data, Delete_Child.
+     *
+     * Notice how Windows has four separate access rights to UNIX's single "write"
+     * permission. In UNIX, the write permission bit on a directory permits both
+     * the creation and removal of new files or sub-directories in the directory.
+     * On Windows, the Write_Data access right controls the creation of new
+     * sub-files and the Delete_Child access right controls the deletion. The
+     * Delete_Child access right is not always present in all ACEs. In the case
+     * where the UNIX sticky-bit is enabled, the Delete_Child bit will be set only
+     * in the file owner ACE and no other ACEs. This will permit only the directory
+     * owner to remove any files or sub-directories from this directory regardless
+     * of the ownership on these sub-files. Other users will be allowed to delete
+     * files or sub-directories only if they are granted the Delete access right
+     * in an ACE of the file or sub-directory itself.
+     */
+
+    return
+        ((Perm & 4) ? FILE_READ_DATA : 0) |
+        ((Perm & 2) ? FILE_WRITE_ATTRIBUTES | FILE_WRITE_DATA | FILE_APPEND_DATA | DeleteChild : 0) |
+        ((Perm & 1) ? FILE_EXECUTE : 0);
+}
+
+/*
+ * Code borrowed from ku/posix.c - end
+ */
+
+static NTSTATUS FspFuseAccessCheck(
+    UINT32 FileUid, UINT32 FileGid, UINT32 FileMode,
+    UINT32 OrigUid, UINT32 OrigGid, UINT32 DesiredAccess,
+    PUINT32 PGrantedAccess)
+{
+    PAGED_CODE();
+
+    UINT32 FileAccess, RequiredAccess, GrantedAccess;
+
+    if (OrigUid == FileUid)
+        FileAccess = FspPosixOwnerDefaultPerm |
+            FspPosixMapPermissionToAccessMask(FileMode & ~001000, (FileMode & 0700) >> 6);
+    else if (OrigGid == FileGid)
+        FileAccess = FspPosixDefaultPerm |
+            FspPosixMapPermissionToAccessMask(FileMode, (FileMode & 0070) >> 3);
+    else
+        FileAccess = FspPosixDefaultPerm |
+            FspPosixMapPermissionToAccessMask(FileMode, (FileMode & 0007));
+
+    RequiredAccess = DesiredAccess & (STANDARD_RIGHTS_ALL | SPECIFIC_RIGHTS_ALL);
+    GrantedAccess = 0 != PGrantedAccess ?
+        *PGrantedAccess & (STANDARD_RIGHTS_ALL | SPECIFIC_RIGHTS_ALL) : 0;
+    if (DesiredAccess & MAXIMUM_ALLOWED)
+    {
+        GrantedAccess |= FileAccess;
+        if (RequiredAccess != (GrantedAccess & RequiredAccess))
+            return STATUS_ACCESS_DENIED;
+    }
+    else
+    {
+        GrantedAccess |= (FileAccess & RequiredAccess);
+        if (RequiredAccess != GrantedAccess)
+            return STATUS_ACCESS_DENIED;
+    }
+
+    if (0 != PGrantedAccess)
+        *PGrantedAccess = GrantedAccess;
+
+    return STATUS_SUCCESS;
+}
 
 static NTSTATUS FspFuseGetTokenUid(HANDLE Token, TOKEN_INFORMATION_CLASS InfoClass, PUINT32 PUid)
 {
@@ -266,13 +379,32 @@ static VOID FspFuseLookupPath(FSP_FUSE_CONTEXT *Context)
                 {
                     if (!LastName && TravPriv)
                     {
-                        // !!!: traverse check
+                        Context->InternalResponse->IoStatus.Status = FspFuseAccessCheck(
+                            Context->Uid, Context->Gid, Context->Mode,
+                            Context->OrigUid, Context->OrigGid,
+                            FILE_TRAVERSE, 0);
+                        if (!NT_SUCCESS(Context->InternalResponse->IoStatus.Status))
+                            coro_break;
                     }
                     else if (LastName)
                     {
-                        // !!!: access check
+                        UINT32 GrantedAccess = Context->InternalRequest->Req.Create.GrantedAccess;
+                        Context->InternalResponse->IoStatus.Status = FspFuseAccessCheck(
+                            Context->Uid, Context->Gid, Context->Mode,
+                            Context->OrigUid, Context->OrigGid,
+                            Context->InternalRequest->Req.Create.DesiredAccess, &GrantedAccess);
+                        if (!NT_SUCCESS(Context->InternalResponse->IoStatus.Status))
+                            coro_break;
+                        Context->InternalResponse->Rsp.Create.Opened.GrantedAccess = GrantedAccess;
                     }
                 }
+            }
+            if (!UserMode && LastName)
+            {
+                Context->InternalResponse->Rsp.Create.Opened.GrantedAccess =
+                    FlagOn(Context->InternalRequest->Req.Create.DesiredAccess, MAXIMUM_ALLOWED) ?
+                        IoGetFileObjectGenericMapping()->GenericAll :
+                        Context->InternalRequest->Req.Create.DesiredAccess;
             }
 #undef TravPriv
 #undef UserMode
@@ -327,8 +459,8 @@ BOOLEAN FspFuseOpCreate(FSP_FUSE_CONTEXT *Context)
 {
     PAGED_CODE();
 
-    NTSTATUS Result;
     VOID (*Fn)(FSP_FUSE_CONTEXT *) = 0;
+    NTSTATUS Result;
 
     coro_block (Context->CoroState)
     {
